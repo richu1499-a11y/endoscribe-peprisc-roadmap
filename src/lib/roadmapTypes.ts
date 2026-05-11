@@ -47,6 +47,9 @@ export interface RoadmapTask {
   gsd_goal: string;
   next_action: string;
   notes: string;
+  workspace?: string;
+  is_seeded?: boolean;
+  is_archived?: boolean;
 }
 
 export interface TaskAssignment {

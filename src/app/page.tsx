@@ -1,50 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getWorkstreams, getTasks, getTaskAssignments, getProfiles, getTasksWithAssignees } from "@/lib/roadmapStore";
-import type { RoadmapTask, Workstream, TaskWithAssignees, TaskAssignment } from "@/lib/roadmapTypes";
-import { summarizeRoadmapHealth } from "@/lib/validation";
-import { tasksDueSoon } from "@/lib/roadmapUtils";
+import { useEffect, useState, useMemo } from "react";
+import { getTasks, getTaskAssignments, getProfiles, getTasksWithAssignees } from "@/lib/roadmapStore";
 import { getCurrentUser } from "@/lib/auth";
-import ComplianceBanner from "@/components/ComplianceBanner";
+import { isSupabaseConfigured } from "@/lib/supabaseClient";
+import type { TaskWithAssignees } from "@/lib/roadmapTypes";
+import Image from "next/image";
+import Link from "next/link";
 import MetricCard from "@/components/MetricCard";
-import WorkstreamSummary from "@/components/WorkstreamSummary";
 import StatusBadge from "@/components/StatusBadge";
 import PriorityBadge from "@/components/PriorityBadge";
-import { isSupabaseConfigured } from "@/lib/supabaseClient";
-import Link from "next/link";
+import ComplianceBanner from "@/components/ComplianceBanner";
 
 const isDev = process.env.NODE_ENV === "development";
 
-function isInCurrentWeek(dateStr: string | null): boolean {
-  if (!dateStr) return false;
-  const d = new Date(dateStr + "T00:00:00");
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
-  return d >= startOfWeek && d <= endOfWeek;
-}
-
 export default function HomePage() {
-  const [tasks, setTasks] = useState<RoadmapTask[]>([]);
-  const [enrichedTasks, setEnrichedTasks] = useState<TaskWithAssignees[]>([]);
-  const [workstreams, setWorkstreams] = useState<Workstream[]>([]);
+  const [tasks, setTasks] = useState<TaskWithAssignees[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [assignments, setAssignments] = useState<TaskAssignment[]>([]);
 
   useEffect(() => {
     (async () => {
-      const [ws, rawTasks, profs, assigns] = await Promise.all([
-        getWorkstreams(), getTasks(), getProfiles(), getTaskAssignments(),
-      ]);
-      setWorkstreams(ws);
-      setTasks(rawTasks);
-      setAssignments(assigns);
-      setEnrichedTasks(await getTasksWithAssignees(rawTasks, assigns, profs));
+      const [rawTasks, profs, assigns] = await Promise.all([getTasks(), getProfiles(), getTaskAssignments()]);
+      const enriched = await getTasksWithAssignees(rawTasks, assigns, profs);
+      setTasks(enriched.filter(t => !t.is_archived));
       if (isSupabaseConfigured) {
         const user = await getCurrentUser();
         setCurrentUserId(user?.id ?? null);
@@ -52,120 +30,98 @@ export default function HomePage() {
     })();
   }, []);
 
-  const health = summarizeRoadmapHealth(tasks);
-  const dueSoon = tasksDueSoon(tasks, 30);
-  const criticalTasks = tasks.filter(t => t.priority === "Critical");
+  const [now] = useState(() => new Date());
+  const today = useMemo(() => now.toISOString().slice(0, 10), [now]);
 
-  // My week
-  const myAssignedIds = new Set(assignments.filter(a => a.user_id === currentUserId).map(a => a.task_id));
-  const myTasks = enrichedTasks.filter(t => myAssignedIds.has(t.id));
-  const myWeekTasks = myTasks.filter(t =>
-    isInCurrentWeek(t.target_date) || t.status === "In progress"
-  );
-  const myOverdue = myTasks.filter(t => t.target_date && t.target_date < new Date().toISOString().slice(0, 10) && t.status !== "Complete");
+  const myTasks = currentUserId ? tasks.filter(t => t.assignees.some(a => a.id === currentUserId)) : [];
+  const myOpen = myTasks.filter(t => t.status !== "Complete" && t.status !== "Deferred");
+  const myOverdue = myTasks.filter(t => t.target_date && t.target_date < today && t.status !== "Complete");
   const myBlocked = myTasks.filter(t => t.status === "Blocked");
-  const myCritical = myTasks.filter(t => t.priority === "Critical");
+  const totalOpen = tasks.filter(t => t.status !== "Complete" && t.status !== "Deferred").length;
+  const totalBlocked = tasks.filter(t => t.status === "Blocked").length;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">EndoScribe + PEPRisc Roadmap OS</h1>
-        <p className="mt-1 text-sm text-slate-500">Shared GSD execution dashboard</p>
+    <div className="mx-auto max-w-5xl space-y-6">
+      {/* Hero */}
+      <div className="flex items-center gap-3">
+        <Image src="/endoscribe-mark.svg" alt="" width={36} height={36} />
+        <div>
+          <h1 className="text-2xl font-bold text-[#1e3a5f]">EndoScribe</h1>
+          <p className="text-xs text-slate-500">Workspace OS -- Command Center</p>
+        </div>
       </div>
 
       <ComplianceBanner />
 
       {!isSupabaseConfigured && isDev && (
-        <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
+        <div className="rounded border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
           Demo mode. <Link href="/setup" className="underline">Configure Supabase</Link>
         </div>
       )}
       {!isSupabaseConfigured && !isDev && (
-        <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
           <strong>Configuration required.</strong> <Link href="/setup" className="underline">View setup</Link>
         </div>
       )}
 
-      {/* My Week -- shown when signed in with assignments */}
-      {currentUserId && myTasks.length > 0 && (
+      {/* My Work */}
+      {currentUserId && (
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-slate-800">My Week</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 mb-4">
-            <MetricCard label="My Assigned" value={myTasks.length} />
-            <MetricCard label="This Week" value={myWeekTasks.length} accent="blue" />
+          <h2 className="text-lg font-semibold text-slate-800 mb-3">My Work</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <MetricCard label="My Open" value={myOpen.length} accent="blue" />
             <MetricCard label="Overdue" value={myOverdue.length} accent={myOverdue.length > 0 ? "red" : "default"} />
             <MetricCard label="Blocked" value={myBlocked.length} accent={myBlocked.length > 0 ? "red" : "default"} />
-            <MetricCard label="Critical" value={myCritical.length} accent={myCritical.length > 0 ? "amber" : "default"} />
+            <MetricCard label="My Total" value={myTasks.length} />
           </div>
-          {myWeekTasks.length > 0 && (
-            <div className="rounded-lg border border-slate-200 bg-white divide-y divide-slate-100">
-              {myWeekTasks.map(t => (
+          {myOpen.length > 0 && (
+            <div className="mt-3 rounded-lg border border-slate-200 bg-white divide-y divide-slate-100">
+              {myOpen.slice(0, 8).map(t => (
                 <div key={t.id} className="flex items-center justify-between px-4 py-2.5">
                   <div>
-                    <span className="mr-2 font-mono text-xs text-slate-500">{t.id}</span>
-                    <span className="text-sm font-medium text-slate-800">{t.title}</span>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      Due: {t.target_date ?? "--"} | Next: {t.next_action || "--"}
-                    </p>
+                    <p className="text-sm font-medium text-slate-800">{t.title}</p>
+                    <p className="text-xs text-slate-500">Due: {t.target_date ?? "--"} | Next: {t.next_action || "--"}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={t.status} />
-                    <PriorityBadge priority={t.priority} />
-                  </div>
+                  <div className="flex gap-2"><StatusBadge status={t.status} /><PriorityBadge priority={t.priority} /></div>
                 </div>
               ))}
             </div>
           )}
-          {myWeekTasks.length === 0 && myTasks.length > 0 && (
-            <p className="text-sm text-slate-500">No tasks due this week. <Link href="/tasks" className="text-indigo-600 underline">View all your tasks</Link></p>
+          {myOpen.length === 0 && myTasks.length === 0 && (
+            <p className="mt-3 text-sm text-slate-500">No tasks assigned to you yet. <Link href="/workspaces" className="text-indigo-600 hover:underline">Open a workspace</Link> to create tasks.</p>
           )}
         </section>
       )}
 
-      {currentUserId && myTasks.length === 0 && isSupabaseConfigured && (
-        <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          No tasks assigned to you yet. An admin can assign tasks from the Tasks page.
-        </div>
-      )}
-
-      {/* Global metrics */}
+      {/* Team overview */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-slate-800">Project Status</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          <MetricCard label="Total Tasks" value={health.total} />
-          <MetricCard label="Blocked" value={health.blocked} accent={health.blocked > 0 ? "red" : "default"} />
-          <MetricCard label="Critical" value={health.critical} accent={health.critical > 0 ? "amber" : "default"} />
-          <MetricCard label="High FDA" value={health.highFda} accent={health.highFda > 0 ? "amber" : "default"} />
-          <MetricCard label="High HIPAA" value={health.highHipaa} accent={health.highHipaa > 0 ? "red" : "default"} />
-          <MetricCard label="Due (30d)" value={dueSoon.length} accent="blue" />
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Team Overview</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <MetricCard label="Active Tasks" value={totalOpen} />
+          <MetricCard label="Blocked" value={totalBlocked} accent={totalBlocked > 0 ? "red" : "default"} />
+          <MetricCard label="Total Tasks" value={tasks.length} />
+          <MetricCard label="Workspaces" value={5} accent="blue" />
         </div>
       </section>
 
+      {/* Quick links */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-slate-800">Workstreams</h2>
-        <WorkstreamSummary workstreams={workstreams} tasks={tasks} />
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Quick Links</h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Link href="/tasks" className="rounded-lg border border-slate-200 bg-white p-4 hover:border-indigo-300 transition-colors">
+            <h3 className="text-sm font-semibold text-slate-800">Tasks</h3>
+            <p className="text-xs text-slate-500 mt-1">View and manage all tasks with filters and assignments.</p>
+          </Link>
+          <Link href="/workspaces" className="rounded-lg border border-slate-200 bg-white p-4 hover:border-indigo-300 transition-colors">
+            <h3 className="text-sm font-semibold text-slate-800">Workspaces</h3>
+            <p className="text-xs text-slate-500 mt-1">Organized project verticals for the EndoScribe roadmap.</p>
+          </Link>
+          <Link href="/calendar" className="rounded-lg border border-slate-200 bg-white p-4 hover:border-indigo-300 transition-colors">
+            <h3 className="text-sm font-semibold text-slate-800">Calendar</h3>
+            <p className="text-xs text-slate-500 mt-1">Schedule and track meetings and reviews.</p>
+          </Link>
+        </div>
       </section>
-
-      {criticalTasks.length > 0 && (
-        <section>
-          <h2 className="mb-3 text-lg font-semibold text-slate-800">Critical Next Actions</h2>
-          <div className="rounded-lg border border-slate-200 bg-white divide-y divide-slate-100">
-            {criticalTasks.slice(0, 10).map(t => (
-              <div key={t.id} className="flex items-center justify-between px-4 py-3">
-                <div>
-                  <span className="mr-2 font-mono text-xs text-slate-500">{t.id}</span>
-                  <span className="text-sm font-medium text-slate-800">{t.title}</span>
-                  <p className="mt-0.5 text-xs text-slate-500">Next: {t.next_action || "--"}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={t.status} />
-                  <PriorityBadge priority={t.priority} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

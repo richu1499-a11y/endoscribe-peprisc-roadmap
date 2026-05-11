@@ -7,8 +7,9 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "EndoScribe + PEPRisc Roadmap OS",
-  description: "Shared GSD execution dashboard for academic medical AI project planning",
+  title: "EndoScribe Workspace OS",
+  description: "Team workspace for EndoScribe + PEPRisc project planning and execution",
+  icons: { icon: "/endoscribe-mark.svg" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

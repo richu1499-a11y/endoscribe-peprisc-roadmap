@@ -285,6 +285,24 @@ export default function SetupPage() {
       results.push({ label: "admin_audit_log table", status: "warn", detail: "Table not found. Run supabase/migrations/009_admin_controls_hardening.sql" });
     }
 
+    // Workspace groups
+    try {
+      const { count: wsGCount, error: wsGErr } = await sb.from("workspace_groups").select("id", { count: "exact", head: true });
+      if (wsGErr) throw wsGErr;
+      results.push({ label: "workspace_groups table", status: (wsGCount ?? 0) > 0 ? "pass" : "warn", detail: `${wsGCount ?? 0} workspace(s)` });
+    } catch {
+      results.push({ label: "workspace_groups table", status: "warn", detail: "Table not found. Run supabase/migrations/011_workspace_os_cleanup.sql" });
+    }
+
+    // Meetings
+    try {
+      const { count: mtgCount, error: mtgErr } = await sb.from("meetings").select("id", { count: "exact", head: true });
+      if (mtgErr) throw mtgErr;
+      results.push({ label: "meetings table", status: "pass", detail: `${mtgCount ?? 0} meeting(s)` });
+    } catch {
+      results.push({ label: "meetings table", status: "warn", detail: "Table not found. Run supabase/migrations/011_workspace_os_cleanup.sql" });
+    }
+
     setChecks(results);
     setRunning(false);
   }

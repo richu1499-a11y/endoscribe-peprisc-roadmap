@@ -2,99 +2,93 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
-  LayoutDashboard, ListChecks, Map, Target, Settings, Wrench, Users,
-  GanttChart, Network, Shield, Lock, FlaskConical, LayoutGrid,
-  FileText, BarChart, Globe, Layers, Clipboard, Database, type LucideIcon,
+  Home, ListChecks, Briefcase, CalendarDays, BarChart3, Settings,
+  Users, Database, LayoutGrid, FileSearch, Wrench, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
-import { getCurrentRole } from "@/lib/auth";
-import { getDashboardRegistry, getVisibleDashboardsForRole } from "@/lib/roadmapStore";
-import type { DashboardRegistryItem } from "@/lib/roadmapTypes";
+import { getCurrentRole, isAdmin as checkIsAdmin } from "@/lib/auth";
 
-// Icon lookup map
-const ICON_MAP: Record<string, LucideIcon> = {
-  LayoutDashboard, Target, Map, GanttChart, Network, Shield, Lock,
-  FlaskConical, ListChecks, Users, LayoutGrid, Wrench, Settings,
-  FileText, BarChart, Globe, Layers, Clipboard, Database,
-};
+interface NavItem { href: string; label: string; icon: React.ComponentType<{ className?: string }> }
 
-// Hardcoded fallback if registry is unavailable
-const FALLBACK_NAV = [
-  { route: "/", title: "Overview", icon: "LayoutDashboard", category: "Core" },
-  { route: "/gsd", title: "GSD", icon: "Target", category: "Execution" },
-  { route: "/roadmap", title: "Roadmap", icon: "Map", category: "Strategy" },
-  { route: "/timeline", title: "Timeline", icon: "GanttChart", category: "Execution" },
-  { route: "/network", title: "Network", icon: "Network", category: "Strategy" },
-  { route: "/regulatory", title: "FDA / Reg", icon: "Shield", category: "Governance" },
-  { route: "/governance", title: "IRB/HIPAA", icon: "Lock", category: "Governance" },
-  { route: "/validation", title: "Validation", icon: "FlaskConical", category: "Evidence" },
-  { route: "/tasks", title: "Tasks", icon: "ListChecks", category: "Execution" },
-  { route: "/setup", title: "Setup", icon: "Wrench", category: "System" },
-  { route: "/settings", title: "Settings", icon: "Settings", category: "System" },
+const NAV_MAIN: NavItem[] = [
+  { href: "/",            label: "Home",        icon: Home },
+  { href: "/tasks",       label: "Tasks",       icon: ListChecks },
+  { href: "/workspaces",  label: "Workspaces",  icon: Briefcase },
+  { href: "/calendar",    label: "Calendar",    icon: CalendarDays },
+  { href: "/reports",     label: "Reports",     icon: BarChart3 },
+];
+
+const NAV_ADMIN: NavItem[] = [
+  { href: "/admin/users",      label: "Users",          icon: Users },
+  { href: "/admin/data",       label: "Data Manager",   icon: Database },
+  { href: "/admin/dashboards", label: "Workspaces",     icon: LayoutGrid },
+  { href: "/admin/audit",      label: "Audit Log",      icon: FileSearch },
+  { href: "/setup",            label: "Setup",          icon: Wrench },
+  { href: "/settings",         label: "Settings",       icon: Settings },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [navItems, setNavItems] = useState<{ route: string; title: string; icon: string; category: string }[]>(FALLBACK_NAV);
-  const [loaded, setLoaded] = useState(false);
+  const [userIsAdmin, setUserIsAdmin] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const registry = await getDashboardRegistry();
-        if (registry.length > 0) {
-          const role = isSupabaseConfigured ? await getCurrentRole() : "viewer";
-          const visible = getVisibleDashboardsForRole(registry, role);
-          if (visible.length > 0) {
-            setNavItems(visible.map((d: DashboardRegistryItem) => ({
-              route: d.route || `/d/${d.slug}`, title: d.title, icon: d.icon ?? "FileText", category: d.category,
-            })));
-          }
-        }
-      } catch {
-        // Keep fallback
-      }
-      setLoaded(true);
-    })();
-  }, []);
+    if (!isSupabaseConfigured) return;
+    getCurrentRole().then(role => {
+      const admin = checkIsAdmin(role);
+      setUserIsAdmin(admin);
+      if (pathname.startsWith("/admin") || pathname === "/setup" || pathname === "/settings") setAdminOpen(admin);
+    });
+  }, [pathname]);
 
-  // Split into main nav and system/admin (category System or Admin at bottom)
-  const mainItems = navItems.filter(n => n.category !== "System" && n.category !== "Admin");
-  const bottomItems = navItems.filter(n => n.category === "System" || n.category === "Admin");
-
-  function renderItem(item: { route: string; title: string; icon: string }) {
-    const active = pathname === item.route;
-    const Icon = ICON_MAP[item.icon] ?? FileText;
+  function renderItem(item: NavItem) {
+    const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
     return (
-      <Link key={item.route} href={item.route} className={clsx(
-        "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+      <Link key={item.href} href={item.href} className={clsx(
+        "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
         active ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
       )}>
-        <Icon className="h-4 w-4" />
-        {item.title}
+        <item.icon className="h-4 w-4" />
+        {item.label}
       </Link>
     );
   }
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-slate-200 bg-slate-50">
-      <div className="border-b border-slate-200 px-4 py-5">
-        <h1 className="text-sm font-bold text-slate-800">EndoScribe + PEPRisc</h1>
-        <p className="text-xs text-slate-500">Roadmap OS</p>
+    <aside className="flex w-56 shrink-0 flex-col border-r border-slate-200 bg-white">
+      {/* Logo */}
+      <div className="border-b border-slate-100 px-4 py-4">
+        <Link href="/" className="flex items-center gap-2">
+          <Image src="/endoscribe-mark.svg" alt="EndoScribe" width={28} height={28} />
+          <div>
+            <p className="text-sm font-bold text-[#1e3a5f]">EndoScribe</p>
+            <p className="text-[10px] text-slate-400 -mt-0.5">Workspace OS</p>
+          </div>
+        </Link>
       </div>
 
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
-        {mainItems.map(renderItem)}
-        {bottomItems.length > 0 && <div className="my-2 border-t border-slate-200" />}
-        {bottomItems.map(renderItem)}
+      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+        {NAV_MAIN.map(renderItem)}
+
+        {/* Admin section */}
+        {userIsAdmin && (
+          <>
+            <div className="my-2 border-t border-slate-100" />
+            <button onClick={() => setAdminOpen(!adminOpen)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600">
+              {adminOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              Admin
+            </button>
+            {adminOpen && NAV_ADMIN.map(renderItem)}
+          </>
+        )}
       </nav>
 
-      <div className="border-t border-slate-200 px-4 py-3">
-        <p className="text-[10px] text-slate-400">{isSupabaseConfigured ? "Supabase connected" : "Local demo mode"}</p>
-        <p className="text-[10px] text-slate-400">{loaded ? `${navItems.length} dashboards` : "Loading..."}</p>
+      <div className="border-t border-slate-100 px-4 py-2.5">
+        <p className="text-[10px] text-slate-400">{isSupabaseConfigured ? "Connected" : "Demo mode"}</p>
       </div>
     </aside>
   );
