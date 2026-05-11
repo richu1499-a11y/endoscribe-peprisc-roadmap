@@ -401,6 +401,54 @@ create policy "Editors can manage governance_items"
   );
 
 -- ============================================================
+-- validation_items (validation science evidence tracker)
+-- ============================================================
+create table if not exists validation_items (
+  id                   uuid primary key default gen_random_uuid(),
+  title                text not null,
+  description          text,
+  validation_domain    text not null,
+  status               text not null default 'Not started',
+  priority             text not null default 'Medium',
+  owner                text,
+  due_date             date,
+  related_task_ids     jsonb not null default '[]',
+  related_decision_ids jsonb not null default '[]',
+  metric_type          text,
+  metric_name          text,
+  target_threshold     text,
+  current_result       text,
+  sample_size          text,
+  dataset_stage        text,
+  evidence_stage       text,
+  failure_mode         text,
+  clinical_materiality text,
+  gap                  text,
+  decision_needed      text,
+  next_action          text,
+  notes                text,
+  created_by           uuid references public.profiles(id),
+  updated_by           uuid references public.profiles(id),
+  created_at           timestamptz not null default now(),
+  updated_at           timestamptz not null default now()
+);
+
+create trigger validation_items_updated_at
+  before update on validation_items
+  for each row execute function set_updated_at();
+
+alter table validation_items enable row level security;
+
+create policy "Authenticated can read validation_items"
+  on validation_items for select to authenticated using (true);
+
+create policy "Editors can manage validation_items"
+  on validation_items for all to authenticated
+  using (
+    exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role in ('admin','editor'))
+  );
+
+-- ============================================================
 -- Enable Supabase Realtime for tasks table
 -- ============================================================
 -- Run in Supabase Dashboard > Database > Replication, or:

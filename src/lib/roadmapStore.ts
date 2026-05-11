@@ -2,7 +2,7 @@
 
 import { getSupabaseBrowser, isSupabaseConfigured } from "./supabase/browser";
 import { MOCK_WORKSTREAMS, MOCK_TASKS, MOCK_DECISIONS, MOCK_RISKS, MOCK_MILESTONES } from "./mockData";
-import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem } from "./roadmapTypes";
+import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem } from "./roadmapTypes";
 
 const isDev = process.env.NODE_ENV === "development";
 let localTasks: RoadmapTask[] = isDev ? [...MOCK_TASKS] : [];
@@ -277,4 +277,53 @@ export async function deleteGovernanceItem(id: string): Promise<void> {
   const { error } = await sb()!.from("governance_items").delete().eq("id", id);
   if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
   await logActivity("governance_item", id, "delete", `Deleted governance item ${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// Validation Items
+// ---------------------------------------------------------------------------
+const MOCK_VALIDATION: ValidationItem[] = isDev ? [
+  { id: "val-1", title: "Evaluate ASR word error rate on ERCP recordings", description: "", validation_domain: "ASR / Transcription", status: "Not started", priority: "High", owner: "", due_date: null, related_task_ids: ["ASR-001", "ASR-002"], related_decision_ids: [], metric_type: "Error rate", metric_name: "WER", target_threshold: "TBD", current_result: "", sample_size: "", dataset_stage: "Curated 10-case set", evidence_stage: "Internal validation", failure_mode: "", clinical_materiality: "", gap: "No WER data yet", decision_needed: "", next_action: "Set up evaluation", notes: "" },
+  { id: "val-2", title: "Compare EndoScribe PEPRisc with manual abstraction", description: "", validation_domain: "PEPRisc Output", status: "Not started", priority: "Critical", owner: "", due_date: null, related_task_ids: ["PEP-004", "VALID-004"], related_decision_ids: [], metric_type: "Agreement", metric_name: "Bland-Altman agreement", target_threshold: "< 5% difference", current_result: "", sample_size: "", dataset_stage: "Curated 10-case set", evidence_stage: "Internal validation", failure_mode: "", clinical_materiality: "", gap: "No PEPRisc scores yet", decision_needed: "", next_action: "Define comparison methodology", notes: "" },
+  { id: "val-3", title: "Build failure-mode taxonomy", description: "", validation_domain: "Failure Mode / Safety", status: "Not started", priority: "High", owner: "", due_date: null, related_task_ids: ["VALID-006"], related_decision_ids: [], metric_type: "Safety", metric_name: "Taxonomy completeness", target_threshold: "All major modes cataloged", current_result: "", sample_size: "", dataset_stage: "Development dataset", evidence_stage: "Development", failure_mode: "", clinical_materiality: "", gap: "No taxonomy exists", decision_needed: "", next_action: "Review AI error literature", notes: "" },
+] : [];
+
+export async function getValidationItems(): Promise<ValidationItem[]> {
+  if (!live()) return MOCK_VALIDATION;
+  const { data, error } = await sb()!.from("validation_items").select("*").order("created_at");
+  if (error) {
+    if (error.code === "42P01" || error.message.includes("does not exist")) return MOCK_VALIDATION;
+    console.error(error);
+    return MOCK_VALIDATION;
+  }
+  return data as ValidationItem[];
+}
+
+export async function createValidationItem(item: Partial<ValidationItem>): Promise<ValidationItem> {
+  if (!live()) throw new Error(isDev ? "Mock mode: not persisted." : "Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const row = { ...item, created_by: user?.id ?? null, updated_by: user?.id ?? null };
+  const { data, error } = await client.from("validation_items").insert(row).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("validation_item", data.id, "create", `Created: ${item.title}`);
+  return data as ValidationItem;
+}
+
+export async function updateValidationItem(id: string, updates: Partial<ValidationItem>): Promise<ValidationItem> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const patch = { ...updates, updated_by: user?.id ?? null };
+  const { data, error } = await client.from("validation_items").update(patch).eq("id", id).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("validation_item", id, "update", `Updated: ${updates.title ?? id}`);
+  return data as ValidationItem;
+}
+
+export async function deleteValidationItem(id: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from("validation_items").delete().eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("validation_item", id, "delete", `Deleted validation item ${id}`);
 }

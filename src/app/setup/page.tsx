@@ -190,6 +190,24 @@ export default function SetupPage() {
       results.push({ label: "governance_items table", status: "warn", detail: "Table not found. Run supabase/migrations/003_irb_hipaa_dashboard.sql" });
     }
 
+    // Validation items
+    try {
+      const { count: valCount, error: valError } = await sb.from("validation_items").select("id", { count: "exact", head: true });
+      if (valError) throw valError;
+      const vc = valCount ?? 0;
+      results.push({ label: "validation_items table", status: vc > 0 ? "pass" : "warn", detail: vc > 0 ? `${vc} item(s)` : "Table exists but empty" });
+      if (vc > 0) {
+        const { data: noMetricData } = await sb.from("validation_items").select("id").is("metric_name", null);
+        const domainSet = new Set<string>();
+        const { data: domainData } = await sb.from("validation_items").select("validation_domain");
+        (domainData ?? []).forEach((d: { validation_domain: string }) => domainSet.add(d.validation_domain));
+        results.push({ label: "Validation domains", status: "pass", detail: `${domainSet.size} domain(s) represented` });
+        if ((noMetricData?.length ?? 0) > 0) results.push({ label: "Validation items missing metric", status: "warn", detail: `${noMetricData?.length ?? 0} item(s) without metric_name` });
+      }
+    } catch {
+      results.push({ label: "validation_items table", status: "warn", detail: "Table not found. Run supabase/migrations/004_validation_dashboard.sql" });
+    }
+
     setChecks(results);
     setRunning(false);
   }

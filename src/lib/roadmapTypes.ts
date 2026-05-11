@@ -173,6 +173,59 @@ export interface GovernanceItem {
   notes: string;
 }
 
+// ---------------------------------------------------------------------------
+// Validation Science
+// ---------------------------------------------------------------------------
+export const VALIDATION_DOMAINS = [
+  "Audio Capture", "ASR / Transcription", "Speaker Diarization",
+  "Variable Extraction", "PEPRisc Output", "Workflow Feasibility",
+  "Failure Mode / Safety", "Prospective Shadow Validation",
+  "Dataset Quality", "Human Review / Ground Truth",
+  "Calibration / Discrimination", "Clinical Materiality",
+] as const;
+
+export const VALIDATION_ITEM_STATUSES = [
+  "Not started", "In progress", "Data needed", "Analysis planned",
+  "Analysis complete", "Needs review", "Complete", "Deferred", "Blocked",
+] as const;
+
+export const VALIDATION_METRIC_TYPES = [
+  "Accuracy", "Agreement", "Error rate", "Latency", "Feasibility",
+  "Calibration", "Discrimination", "Safety", "Qualitative", "Other",
+] as const;
+
+export const VALIDATION_DATASET_STAGES = [
+  "Existing recordings", "Curated 10-case set", "Development dataset",
+  "Internal validation", "Prospective shadow cohort",
+  "Multicenter validation", "Future dataset",
+] as const;
+
+export interface ValidationItem {
+  id: string;
+  title: string;
+  description: string;
+  validation_domain: string;
+  status: string;
+  priority: string;
+  owner: string;
+  due_date: string | null;
+  related_task_ids: string[];
+  related_decision_ids: string[];
+  metric_type: string;
+  metric_name: string;
+  target_threshold: string;
+  current_result: string;
+  sample_size: string;
+  dataset_stage: string;
+  evidence_stage: string;
+  failure_mode: string;
+  clinical_materiality: string;
+  gap: string;
+  decision_needed: string;
+  next_action: string;
+  notes: string;
+}
+
 export interface RegulatoryItem {
   id: string;
   title: string;
