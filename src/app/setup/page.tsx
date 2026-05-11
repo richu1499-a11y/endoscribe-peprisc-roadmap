@@ -252,6 +252,30 @@ export default function SetupPage() {
       results.push({ label: "future_modules table", status: "warn", detail: "Table not found. Run supabase/migrations/007_universal_admin_crud.sql" });
     }
 
+    // Admin entity registry
+    try {
+      const { count: aerCount, error: aerErr } = await sb.from("admin_entity_registry").select("id", { count: "exact", head: true });
+      if (aerErr) throw aerErr;
+      const ac = aerCount ?? 0;
+      results.push({ label: "admin_entity_registry table", status: ac > 0 ? "pass" : "warn", detail: `${ac} entity tab(s)` });
+      if (ac > 0) {
+        const { data: visData } = await sb.from("admin_entity_registry").select("id").eq("is_visible", true);
+        const { data: hidData } = await sb.from("admin_entity_registry").select("id").eq("is_visible", false);
+        results.push({ label: "Entity registry", status: "pass", detail: `${visData?.length ?? 0} visible, ${hidData?.length ?? 0} hidden` });
+      }
+    } catch {
+      results.push({ label: "admin_entity_registry table", status: "warn", detail: "Table not found. Run supabase/migrations/008_admin_ui_configuration_registry.sql" });
+    }
+
+    // Admin page settings
+    try {
+      const { data: apsData, error: apsErr } = await sb.from("admin_page_settings").select("page_key").eq("page_key", "admin_data");
+      if (apsErr) throw apsErr;
+      results.push({ label: "admin_page_settings", status: (apsData?.length ?? 0) > 0 ? "pass" : "warn", detail: (apsData?.length ?? 0) > 0 ? "admin_data page configured" : "Page setting missing" });
+    } catch {
+      results.push({ label: "admin_page_settings table", status: "warn", detail: "Table not found. Run supabase/migrations/008_admin_ui_configuration_registry.sql" });
+    }
+
     setChecks(results);
     setRunning(false);
   }

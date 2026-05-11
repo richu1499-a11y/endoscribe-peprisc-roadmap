@@ -593,6 +593,42 @@ create policy "Editors can manage future_modules"
   using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role in ('admin','editor')));
 
 -- ============================================================
+-- admin_entity_registry (configurable data manager tabs)
+-- ============================================================
+create table if not exists admin_entity_registry (
+  id uuid primary key default gen_random_uuid(),
+  slug text unique not null, label text not null, plural_label text, description text,
+  entity_type text not null, table_name text not null, icon text,
+  category text not null default 'Core', order_index integer not null default 100,
+  is_visible boolean not null default true, is_system boolean not null default true,
+  required_role text not null default 'admin' check (required_role in ('viewer','editor','admin')),
+  allow_create boolean not null default true, allow_edit boolean not null default true,
+  allow_delete boolean not null default true, allow_reorder boolean not null default false,
+  allow_archive boolean not null default false, show_count boolean not null default true,
+  empty_state_title text, empty_state_description text, config jsonb not null default '{}'::jsonb,
+  created_by uuid references public.profiles(id), updated_by uuid references public.profiles(id),
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+);
+create trigger admin_entity_registry_updated_at before update on admin_entity_registry for each row execute function set_updated_at();
+alter table admin_entity_registry enable row level security;
+create policy "Admins can read all admin_entity_registry" on admin_entity_registry for select to authenticated using (is_visible = true or exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'));
+create policy "Admins can manage admin_entity_registry" on admin_entity_registry for all to authenticated using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'));
+
+-- ============================================================
+-- admin_page_settings (configurable page metadata)
+-- ============================================================
+create table if not exists admin_page_settings (
+  id uuid primary key default gen_random_uuid(),
+  page_key text unique not null, title text not null, subtitle text, description text,
+  config jsonb not null default '{}'::jsonb, updated_by uuid references public.profiles(id),
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+);
+create trigger admin_page_settings_updated_at before update on admin_page_settings for each row execute function set_updated_at();
+alter table admin_page_settings enable row level security;
+create policy "Authenticated can read admin_page_settings" on admin_page_settings for select to authenticated using (true);
+create policy "Admins can manage admin_page_settings" on admin_page_settings for all to authenticated using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'));
+
+-- ============================================================
 -- Enable Supabase Realtime for tasks table
 -- ============================================================
 -- Run in Supabase Dashboard > Database > Replication, or:

@@ -2,7 +2,7 @@
 
 import { getSupabaseBrowser, isSupabaseConfigured } from "./supabase/browser";
 import { MOCK_WORKSTREAMS, MOCK_TASKS, MOCK_DECISIONS, MOCK_RISKS, MOCK_MILESTONES } from "./mockData";
-import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem, DashboardRegistryItem, DashboardWidget, DashboardTaskLink, FutureModule } from "./roadmapTypes";
+import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem, DashboardRegistryItem, DashboardWidget, DashboardTaskLink, FutureModule, AdminEntityRegistryItem, AdminPageSetting } from "./roadmapTypes";
 
 const isDev = process.env.NODE_ENV === "development";
 let localTasks: RoadmapTask[] = isDev ? [...MOCK_TASKS] : [];
@@ -589,4 +589,70 @@ export async function unlinkTaskFromDashboard(dashboardId: string, taskId: strin
 export async function moveTaskBetweenDashboards(taskId: string, fromDashboardId: string, toDashboardId: string, section?: string): Promise<void> {
   await unlinkTaskFromDashboard(fromDashboardId, taskId);
   await linkTaskToDashboard(toDashboardId, taskId, section);
+}
+
+// ---------------------------------------------------------------------------
+// Admin Entity Registry + Page Settings
+// ---------------------------------------------------------------------------
+const MOCK_ENTITY_REGISTRY: AdminEntityRegistryItem[] = isDev ? [
+  { id: "m1", slug: "workstreams", label: "Workstream", plural_label: "Workstreams", description: "Strategic workstreams", entity_type: "workstreams", table_name: "workstreams", icon: "Layers", category: "Core", order_index: 10, is_visible: true, is_system: true, required_role: "admin", allow_create: true, allow_edit: true, allow_delete: true, allow_reorder: true, allow_archive: true, show_count: true, empty_state_title: "", empty_state_description: "", config: {} },
+  { id: "m2", slug: "milestones", label: "Milestone", plural_label: "Milestones", description: "Roadmap milestones", entity_type: "milestones", table_name: "milestones", icon: "Target", category: "Core", order_index: 20, is_visible: true, is_system: true, required_role: "admin", allow_create: true, allow_edit: true, allow_delete: true, allow_reorder: false, allow_archive: false, show_count: true, empty_state_title: "", empty_state_description: "", config: {} },
+  { id: "m3", slug: "risks", label: "Risk", plural_label: "Risks", description: "Risk register", entity_type: "risks", table_name: "risks", icon: "AlertTriangle", category: "Core", order_index: 30, is_visible: true, is_system: true, required_role: "admin", allow_create: true, allow_edit: true, allow_delete: true, allow_reorder: false, allow_archive: false, show_count: true, empty_state_title: "", empty_state_description: "", config: {} },
+  { id: "m4", slug: "decisions", label: "Decision", plural_label: "Decisions", description: "Strategic decisions", entity_type: "decisions", table_name: "decisions", icon: "FileText", category: "Core", order_index: 40, is_visible: true, is_system: true, required_role: "admin", allow_create: true, allow_edit: true, allow_delete: true, allow_reorder: false, allow_archive: false, show_count: true, empty_state_title: "", empty_state_description: "", config: {} },
+  { id: "m5", slug: "future_modules", label: "Future Module", plural_label: "Future Modules", description: "Future capabilities", entity_type: "future_modules", table_name: "future_modules", icon: "Globe", category: "Planning", order_index: 50, is_visible: true, is_system: true, required_role: "admin", allow_create: true, allow_edit: true, allow_delete: true, allow_reorder: true, allow_archive: false, show_count: true, empty_state_title: "", empty_state_description: "", config: {} },
+  { id: "m6", slug: "regulatory_items", label: "Regulatory Item", plural_label: "Regulatory Items", description: "FDA/regulatory items", entity_type: "regulatory_items", table_name: "regulatory_items", icon: "Shield", category: "Governance", order_index: 60, is_visible: true, is_system: true, required_role: "admin", allow_create: true, allow_edit: true, allow_delete: true, allow_reorder: false, allow_archive: false, show_count: true, empty_state_title: "", empty_state_description: "", config: {} },
+  { id: "m7", slug: "governance_items", label: "Governance Item", plural_label: "Governance Items", description: "IRB/HIPAA items", entity_type: "governance_items", table_name: "governance_items", icon: "Lock", category: "Governance", order_index: 70, is_visible: true, is_system: true, required_role: "admin", allow_create: true, allow_edit: true, allow_delete: true, allow_reorder: false, allow_archive: false, show_count: true, empty_state_title: "", empty_state_description: "", config: {} },
+  { id: "m8", slug: "validation_items", label: "Validation Item", plural_label: "Validation Items", description: "Validation items", entity_type: "validation_items", table_name: "validation_items", icon: "FlaskConical", category: "Evidence", order_index: 80, is_visible: true, is_system: true, required_role: "admin", allow_create: true, allow_edit: true, allow_delete: true, allow_reorder: false, allow_archive: false, show_count: true, empty_state_title: "", empty_state_description: "", config: {} },
+] : [];
+
+const MOCK_PAGE_SETTINGS: AdminPageSetting = { id: "ps1", page_key: "admin_data", title: "Universal Data Manager", subtitle: "Admin CRUD for all roadmap entities", description: "", config: {} };
+
+export async function getAdminEntityRegistry(): Promise<AdminEntityRegistryItem[]> {
+  if (!live()) return MOCK_ENTITY_REGISTRY;
+  const { data, error } = await sb()!.from("admin_entity_registry").select("*").order("order_index");
+  if (error) {
+    if (error.code === "42P01" || error.message.includes("does not exist")) return MOCK_ENTITY_REGISTRY;
+    console.error(error); return MOCK_ENTITY_REGISTRY;
+  }
+  return data as AdminEntityRegistryItem[];
+}
+
+export async function updateAdminEntityRegistryItem(id: string, updates: Partial<AdminEntityRegistryItem>): Promise<AdminEntityRegistryItem> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const { data, error } = await client.from("admin_entity_registry").update({ ...updates, updated_by: user?.id ?? null }).eq("id", id).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Admin required." : error.message);
+  return data as AdminEntityRegistryItem;
+}
+
+export async function createAdminEntityRegistryItem(item: Partial<AdminEntityRegistryItem>): Promise<AdminEntityRegistryItem> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const { data, error } = await client.from("admin_entity_registry").insert({ ...item, is_system: false, created_by: user?.id ?? null }).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Admin required." : error.message);
+  return data as AdminEntityRegistryItem;
+}
+
+export async function deleteAdminEntityRegistryItem(id: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from("admin_entity_registry").delete().eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Admin required." : error.message);
+}
+
+export async function getAdminPageSetting(pageKey: string): Promise<AdminPageSetting | null> {
+  if (!live()) return pageKey === "admin_data" ? MOCK_PAGE_SETTINGS : null;
+  const { data, error } = await sb()!.from("admin_page_settings").select("*").eq("page_key", pageKey).single();
+  if (error) return pageKey === "admin_data" ? MOCK_PAGE_SETTINGS : null;
+  return data as AdminPageSetting;
+}
+
+export async function updateAdminPageSetting(pageKey: string, updates: Partial<AdminPageSetting>): Promise<AdminPageSetting> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const { data, error } = await client.from("admin_page_settings").update({ ...updates, updated_by: user?.id ?? null }).eq("page_key", pageKey).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Admin required." : error.message);
+  return data as AdminPageSetting;
 }

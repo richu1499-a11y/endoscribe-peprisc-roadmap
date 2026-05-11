@@ -293,6 +293,45 @@ export const RISK_STATUSES = ["Open", "Mitigated", "Accepted", "Closed"] as cons
 export const RISK_SEVERITIES = ["Low", "Medium", "High", "Critical"] as const;
 export const DECISION_STATUSES = ["Pending", "In discussion", "Decided", "Deferred"] as const;
 
+// ---------------------------------------------------------------------------
+// Admin Entity Registry + Page Settings
+// ---------------------------------------------------------------------------
+export const ADMIN_ENTITY_CATEGORIES = ["Core", "Planning", "Governance", "Evidence", "Custom"] as const;
+
+export interface AdminEntityRegistryItem {
+  id: string;
+  slug: string;
+  label: string;
+  plural_label: string;
+  description: string;
+  entity_type: string;
+  table_name: string;
+  icon: string;
+  category: string;
+  order_index: number;
+  is_visible: boolean;
+  is_system: boolean;
+  required_role: string;
+  allow_create: boolean;
+  allow_edit: boolean;
+  allow_delete: boolean;
+  allow_reorder: boolean;
+  allow_archive: boolean;
+  show_count: boolean;
+  empty_state_title: string;
+  empty_state_description: string;
+  config: Record<string, unknown>;
+}
+
+export interface AdminPageSetting {
+  id: string;
+  page_key: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  config: Record<string, unknown>;
+}
+
 export const DASHBOARD_WIDGET_TYPES = [
   "metric_cards", "task_table", "my_week", "assigned_tasks", "gantt",
   "network", "regulatory_items", "governance_items", "validation_items",
