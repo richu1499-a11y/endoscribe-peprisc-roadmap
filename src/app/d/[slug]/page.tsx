@@ -111,7 +111,7 @@ function WidgetRenderer({ widget, allTasks, linkedTasks, myTasks, decisions, hea
             <MetricCard label="Blocked" value={health.blocked} accent={health.blocked > 0 ? "red" : "default"} />
             <MetricCard label="Critical" value={health.critical} accent={health.critical > 0 ? "amber" : "default"} />
             <MetricCard label="High FDA" value={health.highFda} accent="amber" />
-            <MetricCard label="High HIPAA" value={health.highHipaa} accent="red" />
+            <MetricCard label="Compliance" value={health.highHipaa} accent="red" />
             <MetricCard label="Missing Dates" value={health.missingDates} />
           </div>
         </section>

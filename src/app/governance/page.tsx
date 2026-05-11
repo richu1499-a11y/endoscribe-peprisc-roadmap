@@ -132,7 +132,7 @@ export default function GovernancePage() {
     <div className="mx-auto max-w-7xl space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">IRB / HIPAA / Hopkins IT Governance</h1>
+          <h1 className="text-xl font-bold text-slate-900">IRB / Compliance / Hopkins IT Governance</h1>
           <p className="text-xs text-slate-500 mt-0.5">Operational governance roadmap for PHI data flow, audio recording, AI transcription, secure compute, and institutional review</p>
         </div>
         {userCanEdit && (
@@ -142,7 +142,7 @@ export default function GovernancePage() {
 
       <div className="flex items-start gap-2 rounded border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-600">
         <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5 text-slate-500" />
-        <span>This dashboard supports governance planning and does not constitute IRB/HIPAA approval. All items require formal institutional review. Do not enter PHI.</span>
+        <span>This dashboard supports governance planning and does not constitute institutional approval. All items require formal review. Do not enter PHI.</span>
       </div>
 
       <ComplianceBanner />

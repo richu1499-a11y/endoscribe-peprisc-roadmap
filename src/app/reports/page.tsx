@@ -14,7 +14,7 @@ const ADVANCED = [
   { title: "Timeline / Gantt", description: "Interactive Gantt chart with filters, grouping, and date windows.", icon: GanttChart, href: "/timeline" },
   { title: "Network Map", description: "2D dependency network of workstreams, tasks, risks, and decisions.", icon: Network, href: "/network" },
   { title: "FDA / Regulatory", description: "Regulatory strategy, CDS/SaMD assessment, intended use matrix.", icon: Shield, href: "/regulatory" },
-  { title: "IRB / HIPAA Governance", description: "PHI data flow, IRB amendments, Hopkins IT review.", icon: Lock, href: "/governance" },
+  { title: "IRB / Compliance", description: "Data governance, IRB amendments, institutional review.", icon: Lock, href: "/governance" },
   { title: "Validation Science", description: "Evidence ladder, metrics matrix, failure-mode taxonomy.", icon: FlaskConical, href: "/validation" },
 ];
 

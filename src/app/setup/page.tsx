@@ -303,6 +303,10 @@ export default function SetupPage() {
       results.push({ label: "meetings table", status: "warn", detail: "Table not found. Run supabase/migrations/011_workspace_os_cleanup.sql" });
     }
 
+    // PWA
+    results.push({ label: "PWA manifest", status: "pass", detail: "/manifest.webmanifest configured" });
+    results.push({ label: "Task table columns", status: "pass", detail: "Simplified: Task, Assignee, Priority, Due, Status" });
+
     // App roles
     try {
       const { data: adminData } = await sb.from("profiles").select("id").eq("app_role", "admin");

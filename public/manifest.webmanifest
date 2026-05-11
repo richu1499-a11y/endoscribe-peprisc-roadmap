@@ -1,0 +1,18 @@
+{
+  "name": "EndoScribe Workspace OS",
+  "short_name": "EndoScribe",
+  "description": "Team workspace for EndoScribe + PEPRisc project planning and execution",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e3a5f",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/endoscribe-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

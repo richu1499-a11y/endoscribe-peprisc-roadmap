@@ -51,8 +51,7 @@ export default function TasksPage() {
   const [filterPriority, setFilterPriority] = useState("");
   const [filterOwner, setFilterOwner] = useState("");
   const [filterAssignee, setFilterAssignee] = useState("");
-  const [filterFda, setFilterFda] = useState("");
-  const [filterHipaa, setFilterHipaa] = useState("");
+  const [filterWorkspace, setFilterWorkspace] = useState("");
 
   const [selected, setSelected] = useState<RoadmapTask | TaskWithAssignees | null>(null);
   const [editing, setEditing] = useState<RoadmapTask | null | "new">(null);
@@ -107,8 +106,7 @@ export default function TasksPage() {
   if (filterPriority) filtered = filtered.filter(t => t.priority === filterPriority);
   if (filterOwner) filtered = filtered.filter(t => t.owner === filterOwner);
   if (filterAssignee) filtered = filtered.filter(t => t.assignees.some(p => p.id === filterAssignee));
-  if (filterFda) filtered = filtered.filter(t => t.regulatory_relevance === filterFda);
-  if (filterHipaa) filtered = filtered.filter(t => t.hipaa_relevance === filterHipaa);
+  if (filterWorkspace) filtered = filtered.filter(t => t.workspace === filterWorkspace);
 
   async function handleSave(task: RoadmapTask, assigneeIds?: string[]) {
     setError(null);
@@ -212,19 +210,15 @@ export default function TasksPage() {
             {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name || p.email}</option>)}
           </select>
         )}
-        <select className={selectCls} value={filterFda} onChange={e => setFilterFda(e.target.value)}>
-          <option value="">All FDA</option>
-          {uniqueValues(allTasks, "regulatory_relevance").map(v => <option key={v}>{v}</option>)}
-        </select>
-        <select className={selectCls} value={filterHipaa} onChange={e => setFilterHipaa(e.target.value)}>
-          <option value="">All HIPAA</option>
-          {uniqueValues(allTasks, "hipaa_relevance").map(v => <option key={v}>{v}</option>)}
+        <select className={selectCls} value={filterWorkspace} onChange={e => setFilterWorkspace(e.target.value)}>
+          <option value="">All Workspaces</option>
+          {uniqueValues(allTasks, "workspace").map(v => <option key={v}>{v}</option>)}
         </select>
       </div>
 
       <p className="text-xs text-slate-500">{filtered.length} of {baseTasks.length} tasks</p>
 
-      <TaskTable tasks={filtered} workstreams={workstreams} onSelect={setSelected} onDelete={userCanEdit ? handleDelete : () => {}} />
+      <TaskTable tasks={filtered} onSelect={setSelected} onDelete={handleDelete} showDelete={userIsAdmin} />
 
       {selected && !editing && (
         <TaskDetailDrawer task={selected} workstreams={workstreams} onClose={() => setSelected(null)} onEdit={userCanEdit ? (t => { setEditing(t); setSelected(null); }) : (() => {})} />

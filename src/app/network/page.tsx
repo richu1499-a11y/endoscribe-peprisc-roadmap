@@ -189,7 +189,7 @@ export default function NetworkPage() {
           ["strategic", "Strategic Web"],
           ["dependencies", "Dependencies"],
           ["team", "Team Map"],
-          ["fda_hipaa", "FDA/HIPAA"],
+          ["fda_hipaa", "FDA/Compliance"],
           ["critical_blocked", "Critical/Blocked"],
           ["future", "Future Modules"],
         ] as [ViewMode, string][]).map(([v, l]) => (
@@ -210,7 +210,7 @@ export default function NetworkPage() {
           <option value="status">Color: Status</option>
           <option value="priority">Color: Priority</option>
           <option value="fda">Color: FDA</option>
-          <option value="hipaa">Color: HIPAA</option>
+          <option value="hipaa">Color: Compliance</option>
         </select>
 
         <select className={selCls} value={sizeBy} onChange={e => setSizeBy(e.target.value as SizeByKey)}>

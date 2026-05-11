@@ -151,10 +151,12 @@ function MeetingForm({ onSave, onCancel }: { onSave: (form: Partial<Meeting>) =>
             <div><label className={l}>Start time</label><input type="time" className={c} value={startTime} onChange={e => setStartTime(e.target.value)} /></div>
             <div><label className={l}>End time</label><input type="time" className={c} value={endTime} onChange={e => setEndTime(e.target.value)} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className={l}>Location</label><input className={c} value={location} onChange={e => setLocation(e.target.value)} placeholder="Room / building" /></div>
-            <div><label className={l}>Meeting link</label><input className={c} value={meetingLink} onChange={e => setMeetingLink(e.target.value)} placeholder="https://..." /></div>
+          <div>
+            <label className={l}>Meeting link *</label>
+            <input className={c} value={meetingLink} onChange={e => setMeetingLink(e.target.value)} placeholder="https://zoom.us/j/... or https://meet.google.com/..." required />
+            <p className="mt-0.5 text-[10px] text-slate-400">Paste the Zoom, Teams, Google Meet, or other meeting link.</p>
           </div>
+          <div><label className={l}>Location (optional)</label><input className={c} value={location} onChange={e => setLocation(e.target.value)} placeholder="Room / building" /></div>
           <div><label className={l}>Attendee emails (comma-separated)</label><input className={c} value={attendeeEmails} onChange={e => setAttendeeEmails(e.target.value)} placeholder="name@jh.edu, name2@jh.edu" /></div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onCancel} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600">Cancel</button>
