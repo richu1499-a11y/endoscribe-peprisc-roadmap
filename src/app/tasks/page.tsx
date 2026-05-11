@@ -218,7 +218,14 @@ export default function TasksPage() {
 
       <p className="text-xs text-slate-500">{filtered.length} of {baseTasks.length} tasks</p>
 
-      <TaskTable tasks={filtered} onSelect={setSelected} onDelete={handleDelete} showDelete={userIsAdmin} />
+      <TaskTable
+        tasks={filtered}
+        onSelect={setSelected}
+        onUpdate={userCanEdit ? async (id, updates) => { try { await updateTask(id, updates); await refresh(); } catch {} } : undefined}
+        onDelete={handleDelete}
+        isAdmin={userIsAdmin}
+        emptyMessage="No tasks yet. Click + Add Task to create one."
+      />
 
       {selected && !editing && (
         <TaskDetailDrawer task={selected} workstreams={workstreams} onClose={() => setSelected(null)} onEdit={userCanEdit ? (t => { setEditing(t); setSelected(null); }) : (() => {})} />

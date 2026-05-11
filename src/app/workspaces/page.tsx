@@ -18,7 +18,7 @@ const FALLBACK_WS: WorkspaceGroup[] = [
   { slug: "endoscribe-core", title: "EndoScribe Core", description: "Ambient AI scribe, procedure documentation, speech-to-structure.", icon: "FileText" },
   { slug: "peprisc", title: "PEPRisc", description: "Post-ERCP pancreatitis risk prediction and model integration.", icon: "BarChart" },
   { slug: "hardware-workflow", title: "Hardware / Workflow", description: "Audio capture, microphones, procedural-room workflow.", icon: "Settings" },
-  { slug: "irb-fda-translation", title: "IRB, FDA & Translation", description: "IRB, HIPAA, FDA/CDS/SaMD, JHTV, and commercialization.", icon: "Shield" },
+  { slug: "irb-fda-translation", title: "IRB, FDA & Translation", description: "IRB, FDA/CDS/SaMD, JHTV, compliance, and commercialization.", icon: "Shield" },
   { slug: "research-study-trial", title: "Research Study / Prospective Trial", description: "Study design, validation cohort, outcomes, publication.", icon: "FlaskConical" },
 ];
 
