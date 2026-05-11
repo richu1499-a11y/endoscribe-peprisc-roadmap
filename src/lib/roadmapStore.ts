@@ -2,7 +2,7 @@
 
 import { getSupabaseBrowser, isSupabaseConfigured } from "./supabase/browser";
 import { MOCK_WORKSTREAMS, MOCK_TASKS, MOCK_DECISIONS, MOCK_RISKS, MOCK_MILESTONES } from "./mockData";
-import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem, DashboardRegistryItem, DashboardWidget, DashboardTaskLink } from "./roadmapTypes";
+import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem, DashboardRegistryItem, DashboardWidget, DashboardTaskLink, FutureModule } from "./roadmapTypes";
 
 const isDev = process.env.NODE_ENV === "development";
 let localTasks: RoadmapTask[] = isDev ? [...MOCK_TASKS] : [];
@@ -179,6 +179,136 @@ export async function getRisks(): Promise<RiskItem[]> {
   const { data, error } = await sb()!.from("risks").select("*").order("id");
   if (error) { console.error(error); return isDev ? MOCK_RISKS : []; }
   return data as RiskItem[];
+}
+
+// ---------------------------------------------------------------------------
+// Workstreams — CRUD
+// ---------------------------------------------------------------------------
+export async function createWorkstream(ws: Partial<Workstream>): Promise<Workstream> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { data, error } = await sb()!.from("workstreams").insert(ws).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("workstream", data.id, "create", `Created: ${ws.label}`);
+  return data as Workstream;
+}
+export async function updateWorkstream(id: string, updates: Partial<Workstream>): Promise<Workstream> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { data, error } = await sb()!.from("workstreams").update(updates).eq("id", id).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("workstream", id, "update", `Updated: ${updates.label ?? id}`);
+  return data as Workstream;
+}
+export async function deleteWorkstream(id: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from("workstreams").delete().eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("workstream", id, "delete", `Deleted workstream ${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// Milestones — CRUD
+// ---------------------------------------------------------------------------
+export async function createMilestone(ms: Partial<Milestone>): Promise<Milestone> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { data, error } = await sb()!.from("milestones").insert(ms).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("milestone", data.id, "create", `Created: ${ms.title}`);
+  return data as Milestone;
+}
+export async function updateMilestone(id: string, updates: Partial<Milestone>): Promise<Milestone> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { data, error } = await sb()!.from("milestones").update(updates).eq("id", id).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("milestone", id, "update", `Updated: ${updates.title ?? id}`);
+  return data as Milestone;
+}
+export async function deleteMilestone(id: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from("milestones").delete().eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("milestone", id, "delete", `Deleted milestone ${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// Risks — CRUD
+// ---------------------------------------------------------------------------
+export async function createRisk(risk: Partial<RiskItem>): Promise<RiskItem> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { data, error } = await sb()!.from("risks").insert(risk).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("risk", data.id, "create", `Created: ${risk.title}`);
+  return data as RiskItem;
+}
+export async function updateRisk(id: string, updates: Partial<RiskItem>): Promise<RiskItem> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { data, error } = await sb()!.from("risks").update(updates).eq("id", id).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("risk", id, "update", `Updated: ${updates.title ?? id}`);
+  return data as RiskItem;
+}
+export async function deleteRisk(id: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from("risks").delete().eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("risk", id, "delete", `Deleted risk ${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// Decisions — CRUD
+// ---------------------------------------------------------------------------
+export async function createDecision(dec: Partial<DecisionItem>): Promise<DecisionItem> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { data, error } = await sb()!.from("decisions").insert(dec).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("decision", data.id, "create", `Created: ${dec.title}`);
+  return data as DecisionItem;
+}
+export async function updateDecision(id: string, updates: Partial<DecisionItem>): Promise<DecisionItem> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { data, error } = await sb()!.from("decisions").update(updates).eq("id", id).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("decision", id, "update", `Updated: ${updates.title ?? id}`);
+  return data as DecisionItem;
+}
+export async function deleteDecision(id: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from("decisions").delete().eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("decision", id, "delete", `Deleted decision ${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// Future Modules — CRUD
+// ---------------------------------------------------------------------------
+export async function getFutureModules(): Promise<FutureModule[]> {
+  if (!live()) return [];
+  const { data, error } = await sb()!.from("future_modules").select("*").order("order_index");
+  if (error) { if (error.code === "42P01") return []; console.error(error); return []; }
+  return data as FutureModule[];
+}
+export async function createFutureModule(mod: Partial<FutureModule>): Promise<FutureModule> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const { data, error } = await client.from("future_modules").insert({ ...mod, created_by: user?.id ?? null, updated_by: user?.id ?? null }).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("future_module", data.id, "create", `Created: ${mod.title}`);
+  return data as FutureModule;
+}
+export async function updateFutureModule(id: string, updates: Partial<FutureModule>): Promise<FutureModule> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const { data, error } = await client.from("future_modules").update({ ...updates, updated_by: user?.id ?? null }).eq("id", id).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("future_module", id, "update", `Updated: ${updates.title ?? id}`);
+  return data as FutureModule;
+}
+export async function deleteFutureModule(id: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from("future_modules").delete().eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("future_module", id, "delete", `Deleted future module ${id}`);
 }
 
 // ---------------------------------------------------------------------------

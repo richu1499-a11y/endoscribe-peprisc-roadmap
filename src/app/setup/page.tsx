@@ -243,6 +243,15 @@ export default function SetupPage() {
       results.push({ label: "dashboard_task_links table", status: "warn", detail: "Table not found. Run supabase/migrations/006_dashboard_layout_task_workspaces.sql" });
     }
 
+    // Future modules
+    try {
+      const { count: fmCount, error: fmErr } = await sb.from("future_modules").select("id", { count: "exact", head: true });
+      if (fmErr) throw fmErr;
+      results.push({ label: "future_modules table", status: (fmCount ?? 0) > 0 ? "pass" : "warn", detail: `${fmCount ?? 0} module(s)` });
+    } catch {
+      results.push({ label: "future_modules table", status: "warn", detail: "Table not found. Run supabase/migrations/007_universal_admin_crud.sql" });
+    }
+
     setChecks(results);
     setRunning(false);
   }

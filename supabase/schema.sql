@@ -555,6 +555,44 @@ create policy "Admins can manage dashboard_task_links"
   using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'));
 
 -- ============================================================
+-- future_modules
+-- ============================================================
+create table if not exists future_modules (
+  id                  uuid primary key default gen_random_uuid(),
+  title               text not null,
+  description         text,
+  category            text default 'Future',
+  status              text not null default 'Concept',
+  priority            text not null default 'Medium',
+  owner               text,
+  related_task_ids    jsonb not null default '[]',
+  related_dashboard_ids jsonb not null default '[]',
+  target_phase        text,
+  dependencies        jsonb not null default '[]',
+  risks               jsonb not null default '[]',
+  next_action         text,
+  notes               text,
+  order_index         integer not null default 100,
+  is_visible          boolean not null default true,
+  created_by          uuid references public.profiles(id),
+  updated_by          uuid references public.profiles(id),
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now()
+);
+
+create trigger future_modules_updated_at
+  before update on future_modules for each row execute function set_updated_at();
+
+alter table future_modules enable row level security;
+
+create policy "Authenticated can read future_modules"
+  on future_modules for select to authenticated using (true);
+
+create policy "Editors can manage future_modules"
+  on future_modules for all to authenticated
+  using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role in ('admin','editor')));
+
+-- ============================================================
 -- Enable Supabase Realtime for tasks table
 -- ============================================================
 -- Run in Supabase Dashboard > Database > Replication, or:

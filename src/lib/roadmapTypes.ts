@@ -260,6 +260,39 @@ export const DASHBOARD_ICON_OPTIONS = [
   "Settings", "FileText", "BarChart", "Globe", "Layers", "Clipboard",
 ] as const;
 
+// ---------------------------------------------------------------------------
+// Future Modules
+// ---------------------------------------------------------------------------
+export const FUTURE_MODULE_STATUSES = ["Concept", "Planning", "In progress", "Deferred", "Future", "Complete"] as const;
+export const FUTURE_MODULE_CATEGORIES = ["AI Agent", "Computer Vision", "Prediction Model", "Validation", "Infrastructure", "Integration", "Other"] as const;
+
+export interface FutureModule {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  status: string;
+  priority: string;
+  owner: string;
+  related_task_ids: string[];
+  related_dashboard_ids: string[];
+  target_phase: string;
+  dependencies: string[];
+  risks: string[];
+  next_action: string;
+  notes: string;
+  order_index: number;
+  is_visible: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Milestone / Risk / Decision statuses
+// ---------------------------------------------------------------------------
+export const MILESTONE_STATUSES = ["Not started", "In progress", "Complete", "Deferred"] as const;
+export const RISK_STATUSES = ["Open", "Mitigated", "Accepted", "Closed"] as const;
+export const RISK_SEVERITIES = ["Low", "Medium", "High", "Critical"] as const;
+export const DECISION_STATUSES = ["Pending", "In discussion", "Decided", "Deferred"] as const;
+
 export const DASHBOARD_WIDGET_TYPES = [
   "metric_cards", "task_table", "my_week", "assigned_tasks", "gantt",
   "network", "regulatory_items", "governance_items", "validation_items",

@@ -7,7 +7,7 @@ import { clsx } from "clsx";
 import {
   LayoutDashboard, ListChecks, Map, Target, Settings, Wrench, Users,
   GanttChart, Network, Shield, Lock, FlaskConical, LayoutGrid,
-  FileText, BarChart, Globe, Layers, Clipboard, type LucideIcon,
+  FileText, BarChart, Globe, Layers, Clipboard, Database, type LucideIcon,
 } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
 import { getCurrentRole } from "@/lib/auth";
@@ -18,7 +18,7 @@ import type { DashboardRegistryItem } from "@/lib/roadmapTypes";
 const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard, Target, Map, GanttChart, Network, Shield, Lock,
   FlaskConical, ListChecks, Users, LayoutGrid, Wrench, Settings,
-  FileText, BarChart, Globe, Layers, Clipboard,
+  FileText, BarChart, Globe, Layers, Clipboard, Database,
 };
 
 // Hardcoded fallback if registry is unavailable
