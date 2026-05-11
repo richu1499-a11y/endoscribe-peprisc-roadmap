@@ -260,6 +260,59 @@ export const DASHBOARD_ICON_OPTIONS = [
   "Settings", "FileText", "BarChart", "Globe", "Layers", "Clipboard",
 ] as const;
 
+export const DASHBOARD_WIDGET_TYPES = [
+  "metric_cards", "task_table", "my_week", "assigned_tasks", "gantt",
+  "network", "regulatory_items", "governance_items", "validation_items",
+  "risk_register", "decision_log", "workload_summary", "health_warnings",
+  "static_text", "linked_tasks", "custom_section",
+] as const;
+
+export const DASHBOARD_WIDGET_SOURCE_TYPES = [
+  "tasks", "assignments", "workstreams", "timeline", "network",
+  "regulatory_items", "governance_items", "validation_items",
+  "risks", "decisions", "static",
+] as const;
+
+export const DASHBOARD_WIDGET_WIDTHS = ["full", "half", "third", "two_thirds"] as const;
+
+export const DASHBOARD_TASK_SECTIONS = [
+  "General", "This Week", "High Priority", "Regulatory", "Validation",
+  "IRB/HIPAA", "Intern Tasks", "PI Review", "Backlog",
+] as const;
+
+export interface DashboardWidget {
+  id: string;
+  dashboard_id: string;
+  widget_key: string;
+  title: string;
+  description: string;
+  widget_type: string;
+  source_type: string;
+  config: Record<string, unknown>;
+  order_index: number;
+  width: string;
+  height: string;
+  is_visible: boolean;
+  required_role: string;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DashboardTaskLink {
+  id: string;
+  dashboard_id: string;
+  task_id: string;
+  section: string;
+  order_index: number;
+  pinned: boolean;
+  notes: string | null;
+  added_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DashboardRegistryItem {
   id: string;
   slug: string;

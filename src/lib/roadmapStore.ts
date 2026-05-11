@@ -2,7 +2,7 @@
 
 import { getSupabaseBrowser, isSupabaseConfigured } from "./supabase/browser";
 import { MOCK_WORKSTREAMS, MOCK_TASKS, MOCK_DECISIONS, MOCK_RISKS, MOCK_MILESTONES } from "./mockData";
-import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem, DashboardRegistryItem } from "./roadmapTypes";
+import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem, DashboardRegistryItem, DashboardWidget, DashboardTaskLink } from "./roadmapTypes";
 
 const isDev = process.env.NODE_ENV === "development";
 let localTasks: RoadmapTask[] = isDev ? [...MOCK_TASKS] : [];
@@ -389,4 +389,74 @@ export async function deleteDashboardRegistryItem(id: string): Promise<void> {
   if (!live()) throw new Error("Supabase not configured.");
   const { error } = await sb()!.from("dashboard_registry").delete().eq("id", id);
   if (error) throw new Error(error.message.includes("policy") ? "Admin role required." : error.message);
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard Widgets
+// ---------------------------------------------------------------------------
+export async function getDashboardWidgets(dashboardId?: string): Promise<DashboardWidget[]> {
+  if (!live()) return [];
+  let q = sb()!.from("dashboard_widgets").select("*").order("order_index");
+  if (dashboardId) q = q.eq("dashboard_id", dashboardId);
+  const { data, error } = await q;
+  if (error) { if (error.code === "42P01") return []; console.error(error); return []; }
+  return data as DashboardWidget[];
+}
+
+export async function createDashboardWidget(widget: Partial<DashboardWidget>): Promise<DashboardWidget> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const row = { ...widget, created_by: user?.id ?? null, updated_by: user?.id ?? null };
+  const { data, error } = await client.from("dashboard_widgets").insert(row).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Admin role required." : error.message);
+  return data as DashboardWidget;
+}
+
+export async function updateDashboardWidget(id: string, updates: Partial<DashboardWidget>): Promise<DashboardWidget> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const { data, error } = await client.from("dashboard_widgets").update({ ...updates, updated_by: user?.id ?? null }).eq("id", id).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Admin role required." : error.message);
+  return data as DashboardWidget;
+}
+
+export async function deleteDashboardWidget(id: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from("dashboard_widgets").delete().eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Admin role required." : error.message);
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard Task Links
+// ---------------------------------------------------------------------------
+export async function getDashboardTaskLinks(dashboardId?: string): Promise<DashboardTaskLink[]> {
+  if (!live()) return [];
+  let q = sb()!.from("dashboard_task_links").select("*").order("order_index");
+  if (dashboardId) q = q.eq("dashboard_id", dashboardId);
+  const { data, error } = await q;
+  if (error) { if (error.code === "42P01") return []; console.error(error); return []; }
+  return data as DashboardTaskLink[];
+}
+
+export async function linkTaskToDashboard(dashboardId: string, taskId: string, section?: string, notes?: string): Promise<DashboardTaskLink> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const row = { dashboard_id: dashboardId, task_id: taskId, section: section ?? "General", added_by: user?.id ?? null, notes: notes ?? null };
+  const { data, error } = await client.from("dashboard_task_links").insert(row).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Admin role required." : error.message);
+  return data as DashboardTaskLink;
+}
+
+export async function unlinkTaskFromDashboard(dashboardId: string, taskId: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from("dashboard_task_links").delete().eq("dashboard_id", dashboardId).eq("task_id", taskId);
+  if (error) throw new Error(error.message.includes("policy") ? "Admin role required." : error.message);
+}
+
+export async function moveTaskBetweenDashboards(taskId: string, fromDashboardId: string, toDashboardId: string, section?: string): Promise<void> {
+  await unlinkTaskFromDashboard(fromDashboardId, taskId);
+  await linkTaskToDashboard(toDashboardId, taskId, section);
 }

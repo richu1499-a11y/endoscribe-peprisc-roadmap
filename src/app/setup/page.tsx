@@ -225,6 +225,24 @@ export default function SetupPage() {
       results.push({ label: "dashboard_registry table", status: "warn", detail: "Table not found. Run supabase/migrations/005_dashboard_registry.sql" });
     }
 
+    // Dashboard widgets
+    try {
+      const { count: wgCount, error: wgErr } = await sb.from("dashboard_widgets").select("id", { count: "exact", head: true });
+      if (wgErr) throw wgErr;
+      results.push({ label: "dashboard_widgets table", status: (wgCount ?? 0) > 0 ? "pass" : "warn", detail: `${wgCount ?? 0} widget(s)` });
+    } catch {
+      results.push({ label: "dashboard_widgets table", status: "warn", detail: "Table not found. Run supabase/migrations/006_dashboard_layout_task_workspaces.sql" });
+    }
+
+    // Dashboard task links
+    try {
+      const { count: tlCount, error: tlErr } = await sb.from("dashboard_task_links").select("id", { count: "exact", head: true });
+      if (tlErr) throw tlErr;
+      results.push({ label: "dashboard_task_links table", status: "pass", detail: `${tlCount ?? 0} task link(s)` });
+    } catch {
+      results.push({ label: "dashboard_task_links table", status: "warn", detail: "Table not found. Run supabase/migrations/006_dashboard_layout_task_workspaces.sql" });
+    }
+
     setChecks(results);
     setRunning(false);
   }

@@ -491,6 +491,70 @@ create policy "Admins can manage dashboard_registry"
   ));
 
 -- ============================================================
+-- dashboard_widgets (configurable sections per dashboard)
+-- ============================================================
+create table if not exists dashboard_widgets (
+  id             uuid primary key default gen_random_uuid(),
+  dashboard_id   uuid not null references public.dashboard_registry(id) on delete cascade,
+  widget_key     text not null,
+  title          text not null,
+  description    text,
+  widget_type    text not null,
+  source_type    text not null default 'tasks',
+  config         jsonb not null default '{}'::jsonb,
+  order_index    integer not null default 100,
+  width          text not null default 'full',
+  height         text not null default 'auto',
+  is_visible     boolean not null default true,
+  required_role  text not null default 'viewer',
+  created_by     uuid references public.profiles(id),
+  updated_by     uuid references public.profiles(id),
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
+);
+
+create trigger dashboard_widgets_updated_at
+  before update on dashboard_widgets for each row execute function set_updated_at();
+
+alter table dashboard_widgets enable row level security;
+
+create policy "Authenticated can read dashboard_widgets"
+  on dashboard_widgets for select to authenticated using (true);
+
+create policy "Admins can manage dashboard_widgets"
+  on dashboard_widgets for all to authenticated
+  using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'));
+
+-- ============================================================
+-- dashboard_task_links (link canonical tasks to dashboards)
+-- ============================================================
+create table if not exists dashboard_task_links (
+  id             uuid primary key default gen_random_uuid(),
+  dashboard_id   uuid not null references public.dashboard_registry(id) on delete cascade,
+  task_id        text not null references public.tasks(id) on delete cascade,
+  section        text not null default 'General',
+  order_index    integer not null default 100,
+  pinned         boolean not null default false,
+  notes          text,
+  added_by       uuid references public.profiles(id),
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now(),
+  unique(dashboard_id, task_id)
+);
+
+create trigger dashboard_task_links_updated_at
+  before update on dashboard_task_links for each row execute function set_updated_at();
+
+alter table dashboard_task_links enable row level security;
+
+create policy "Authenticated can read dashboard_task_links"
+  on dashboard_task_links for select to authenticated using (true);
+
+create policy "Admins can manage dashboard_task_links"
+  on dashboard_task_links for all to authenticated
+  using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'));
+
+-- ============================================================
 -- Enable Supabase Realtime for tasks table
 -- ============================================================
 -- Run in Supabase Dashboard > Database > Replication, or:

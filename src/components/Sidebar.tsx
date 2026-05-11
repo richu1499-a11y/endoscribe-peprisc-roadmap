@@ -50,7 +50,7 @@ export default function Sidebar() {
           const visible = getVisibleDashboardsForRole(registry, role);
           if (visible.length > 0) {
             setNavItems(visible.map((d: DashboardRegistryItem) => ({
-              route: d.route, title: d.title, icon: d.icon ?? "FileText", category: d.category,
+              route: d.route || `/d/${d.slug}`, title: d.title, icon: d.icon ?? "FileText", category: d.category,
             })));
           }
         }
