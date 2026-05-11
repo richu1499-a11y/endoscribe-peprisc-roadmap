@@ -1,0 +1,20 @@
+"use client";
+
+import { clsx } from "clsx";
+import type { TaskStatus } from "@/lib/roadmapTypes";
+
+const colors: Record<string, string> = {
+  "Not started": "bg-slate-100 text-slate-700",
+  "In progress": "bg-blue-100 text-blue-800",
+  "Blocked":     "bg-red-100 text-red-800",
+  "Complete":    "bg-green-100 text-green-800",
+  "Deferred":    "bg-purple-100 text-purple-800",
+};
+
+export default function StatusBadge({ status }: { status: TaskStatus | string }) {
+  return (
+    <span className={clsx("inline-block rounded px-2 py-0.5 text-xs font-medium", colors[status] ?? "bg-slate-100 text-slate-700")}>
+      {status}
+    </span>
+  );
+}
