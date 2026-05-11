@@ -5,46 +5,76 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
-  LayoutDashboard, ListChecks, Map, Target, Settings, Wrench, Users, GanttChart, Network, Shield, Lock, FlaskConical,
+  LayoutDashboard, ListChecks, Map, Target, Settings, Wrench, Users,
+  GanttChart, Network, Shield, Lock, FlaskConical, LayoutGrid,
+  FileText, BarChart, Globe, Layers, Clipboard, type LucideIcon,
 } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
-import { getCurrentRole, isAdmin as checkIsAdmin } from "@/lib/auth";
+import { getCurrentRole } from "@/lib/auth";
+import { getDashboardRegistry, getVisibleDashboardsForRole } from "@/lib/roadmapStore";
+import type { DashboardRegistryItem } from "@/lib/roadmapTypes";
 
-const NAV_MAIN = [
-  { href: "/",          label: "Overview",  icon: LayoutDashboard },
-  { href: "/gsd",       label: "GSD",       icon: Target },
-  { href: "/roadmap",   label: "Roadmap",   icon: Map },
-  { href: "/timeline",  label: "Timeline",  icon: GanttChart },
-  { href: "/network",   label: "Network",   icon: Network },
-  { href: "/regulatory", label: "FDA / Reg", icon: Shield },
-  { href: "/governance", label: "IRB/HIPAA", icon: Lock },
-  { href: "/validation", label: "Validation", icon: FlaskConical },
-  { href: "/tasks",     label: "Tasks",     icon: ListChecks },
-];
+// Icon lookup map
+const ICON_MAP: Record<string, LucideIcon> = {
+  LayoutDashboard, Target, Map, GanttChart, Network, Shield, Lock,
+  FlaskConical, ListChecks, Users, LayoutGrid, Wrench, Settings,
+  FileText, BarChart, Globe, Layers, Clipboard,
+};
 
-const NAV_BOTTOM = [
-  { href: "/setup",    label: "Setup",     icon: Wrench },
-  { href: "/settings", label: "Settings",  icon: Settings },
+// Hardcoded fallback if registry is unavailable
+const FALLBACK_NAV = [
+  { route: "/", title: "Overview", icon: "LayoutDashboard", category: "Core" },
+  { route: "/gsd", title: "GSD", icon: "Target", category: "Execution" },
+  { route: "/roadmap", title: "Roadmap", icon: "Map", category: "Strategy" },
+  { route: "/timeline", title: "Timeline", icon: "GanttChart", category: "Execution" },
+  { route: "/network", title: "Network", icon: "Network", category: "Strategy" },
+  { route: "/regulatory", title: "FDA / Reg", icon: "Shield", category: "Governance" },
+  { route: "/governance", title: "IRB/HIPAA", icon: "Lock", category: "Governance" },
+  { route: "/validation", title: "Validation", icon: "FlaskConical", category: "Evidence" },
+  { route: "/tasks", title: "Tasks", icon: "ListChecks", category: "Execution" },
+  { route: "/setup", title: "Setup", icon: "Wrench", category: "System" },
+  { route: "/settings", title: "Settings", icon: "Settings", category: "System" },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [showAdmin, setShowAdmin] = useState(false);
+  const [navItems, setNavItems] = useState<{ route: string; title: string; icon: string; category: string }[]>(FALLBACK_NAV);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
-    getCurrentRole().then(role => setShowAdmin(checkIsAdmin(role)));
+    (async () => {
+      try {
+        const registry = await getDashboardRegistry();
+        if (registry.length > 0) {
+          const role = isSupabaseConfigured ? await getCurrentRole() : "viewer";
+          const visible = getVisibleDashboardsForRole(registry, role);
+          if (visible.length > 0) {
+            setNavItems(visible.map((d: DashboardRegistryItem) => ({
+              route: d.route, title: d.title, icon: d.icon ?? "FileText", category: d.category,
+            })));
+          }
+        }
+      } catch {
+        // Keep fallback
+      }
+      setLoaded(true);
+    })();
   }, []);
 
-  function navItem({ href, label, icon: Icon }: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }) {
-    const active = pathname === href;
+  // Split into main nav and system/admin (category System or Admin at bottom)
+  const mainItems = navItems.filter(n => n.category !== "System" && n.category !== "Admin");
+  const bottomItems = navItems.filter(n => n.category === "System" || n.category === "Admin");
+
+  function renderItem(item: { route: string; title: string; icon: string }) {
+    const active = pathname === item.route;
+    const Icon = ICON_MAP[item.icon] ?? FileText;
     return (
-      <Link key={href} href={href} className={clsx(
+      <Link key={item.route} href={item.route} className={clsx(
         "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
         active ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
       )}>
         <Icon className="h-4 w-4" />
-        {label}
+        {item.title}
       </Link>
     );
   }
@@ -56,16 +86,15 @@ export default function Sidebar() {
         <p className="text-xs text-slate-500">Roadmap OS</p>
       </div>
 
-      <nav className="flex-1 space-y-1 px-2 py-3">
-        {NAV_MAIN.map(n => navItem(n))}
-        {showAdmin && navItem({ href: "/admin/users", label: "Users", icon: Users })}
-        <div className="my-2 border-t border-slate-200" />
-        {NAV_BOTTOM.map(n => navItem(n))}
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
+        {mainItems.map(renderItem)}
+        {bottomItems.length > 0 && <div className="my-2 border-t border-slate-200" />}
+        {bottomItems.map(renderItem)}
       </nav>
 
       <div className="border-t border-slate-200 px-4 py-3">
         <p className="text-[10px] text-slate-400">{isSupabaseConfigured ? "Supabase connected" : "Local demo mode"}</p>
-        <p className="text-[10px] text-slate-400">No PHI permitted</p>
+        <p className="text-[10px] text-slate-400">{loaded ? `${navItems.length} dashboards` : "Loading..."}</p>
       </div>
     </aside>
   );

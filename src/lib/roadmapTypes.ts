@@ -244,3 +244,39 @@ export interface RegulatoryItem {
   next_action: string;
   notes: string;
 }
+
+// ---------------------------------------------------------------------------
+// Dashboard Registry
+// ---------------------------------------------------------------------------
+export const DASHBOARD_CATEGORIES = [
+  "Core", "Execution", "Strategy", "Governance", "Evidence", "Admin", "System", "Custom",
+] as const;
+
+export const DASHBOARD_REQUIRED_ROLES = ["viewer", "editor", "admin"] as const;
+
+export const DASHBOARD_ICON_OPTIONS = [
+  "LayoutDashboard", "Target", "Map", "GanttChart", "Network", "Shield",
+  "Lock", "FlaskConical", "ListChecks", "Users", "LayoutGrid", "Wrench",
+  "Settings", "FileText", "BarChart", "Globe", "Layers", "Clipboard",
+] as const;
+
+export interface DashboardRegistryItem {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  route: string;
+  icon: string;
+  category: string;
+  order_index: number;
+  is_visible: boolean;
+  is_system: boolean;
+  required_role: "viewer" | "editor" | "admin";
+  layout_config: Record<string, unknown>;
+  widget_config: unknown[];
+  notes: string;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}

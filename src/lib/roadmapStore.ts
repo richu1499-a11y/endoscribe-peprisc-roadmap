@@ -2,7 +2,7 @@
 
 import { getSupabaseBrowser, isSupabaseConfigured } from "./supabase/browser";
 import { MOCK_WORKSTREAMS, MOCK_TASKS, MOCK_DECISIONS, MOCK_RISKS, MOCK_MILESTONES } from "./mockData";
-import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem } from "./roadmapTypes";
+import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem, DashboardRegistryItem } from "./roadmapTypes";
 
 const isDev = process.env.NODE_ENV === "development";
 let localTasks: RoadmapTask[] = isDev ? [...MOCK_TASKS] : [];
@@ -326,4 +326,67 @@ export async function deleteValidationItem(id: string): Promise<void> {
   const { error } = await sb()!.from("validation_items").delete().eq("id", id);
   if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
   await logActivity("validation_item", id, "delete", `Deleted validation item ${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard Registry
+// ---------------------------------------------------------------------------
+const MOCK_DASHBOARDS: DashboardRegistryItem[] = [
+  { id: "m1", slug: "overview", title: "Overview", description: "", route: "/", icon: "LayoutDashboard", category: "Core", order_index: 10, is_visible: true, is_system: true, required_role: "viewer", layout_config: {}, widget_config: [], notes: "", created_by: null, updated_by: null, created_at: "", updated_at: "" },
+  { id: "m2", slug: "gsd", title: "GSD", description: "", route: "/gsd", icon: "Target", category: "Execution", order_index: 20, is_visible: true, is_system: true, required_role: "viewer", layout_config: {}, widget_config: [], notes: "", created_by: null, updated_by: null, created_at: "", updated_at: "" },
+  { id: "m3", slug: "roadmap", title: "Roadmap", description: "", route: "/roadmap", icon: "Map", category: "Strategy", order_index: 30, is_visible: true, is_system: true, required_role: "viewer", layout_config: {}, widget_config: [], notes: "", created_by: null, updated_by: null, created_at: "", updated_at: "" },
+  { id: "m4", slug: "timeline", title: "Timeline", description: "", route: "/timeline", icon: "GanttChart", category: "Execution", order_index: 40, is_visible: true, is_system: true, required_role: "viewer", layout_config: {}, widget_config: [], notes: "", created_by: null, updated_by: null, created_at: "", updated_at: "" },
+  { id: "m5", slug: "network", title: "Network Map", description: "", route: "/network", icon: "Network", category: "Strategy", order_index: 50, is_visible: true, is_system: true, required_role: "viewer", layout_config: {}, widget_config: [], notes: "", created_by: null, updated_by: null, created_at: "", updated_at: "" },
+  { id: "m6", slug: "regulatory", title: "FDA / Regulatory", description: "", route: "/regulatory", icon: "Shield", category: "Governance", order_index: 60, is_visible: true, is_system: true, required_role: "viewer", layout_config: {}, widget_config: [], notes: "", created_by: null, updated_by: null, created_at: "", updated_at: "" },
+  { id: "m7", slug: "governance", title: "IRB / HIPAA", description: "", route: "/governance", icon: "Lock", category: "Governance", order_index: 70, is_visible: true, is_system: true, required_role: "viewer", layout_config: {}, widget_config: [], notes: "", created_by: null, updated_by: null, created_at: "", updated_at: "" },
+  { id: "m8", slug: "validation", title: "Validation", description: "", route: "/validation", icon: "FlaskConical", category: "Evidence", order_index: 80, is_visible: true, is_system: true, required_role: "viewer", layout_config: {}, widget_config: [], notes: "", created_by: null, updated_by: null, created_at: "", updated_at: "" },
+  { id: "m9", slug: "tasks", title: "Tasks", description: "", route: "/tasks", icon: "ListChecks", category: "Execution", order_index: 90, is_visible: true, is_system: true, required_role: "viewer", layout_config: {}, widget_config: [], notes: "", created_by: null, updated_by: null, created_at: "", updated_at: "" },
+  { id: "m10", slug: "setup", title: "Setup", description: "", route: "/setup", icon: "Wrench", category: "System", order_index: 300, is_visible: true, is_system: true, required_role: "admin", layout_config: {}, widget_config: [], notes: "", created_by: null, updated_by: null, created_at: "", updated_at: "" },
+  { id: "m11", slug: "settings", title: "Settings", description: "", route: "/settings", icon: "Settings", category: "System", order_index: 310, is_visible: true, is_system: true, required_role: "viewer", layout_config: {}, widget_config: [], notes: "", created_by: null, updated_by: null, created_at: "", updated_at: "" },
+];
+
+export async function getDashboardRegistry(): Promise<DashboardRegistryItem[]> {
+  if (!live()) return isDev ? MOCK_DASHBOARDS : [];
+  const { data, error } = await sb()!.from("dashboard_registry").select("*").order("order_index");
+  if (error) {
+    if (error.code === "42P01" || error.message.includes("does not exist")) return MOCK_DASHBOARDS;
+    console.error(error);
+    return MOCK_DASHBOARDS;
+  }
+  return (data as DashboardRegistryItem[]).sort((a, b) => a.order_index - b.order_index);
+}
+
+const ROLE_RANK: Record<string, number> = { viewer: 0, editor: 1, admin: 2 };
+
+export function getVisibleDashboardsForRole(dashboards: DashboardRegistryItem[], role: string | null): DashboardRegistryItem[] {
+  const userRank = ROLE_RANK[role ?? "viewer"] ?? 0;
+  return dashboards
+    .filter(d => d.is_visible && ROLE_RANK[d.required_role] <= userRank)
+    .sort((a, b) => a.order_index - b.order_index);
+}
+
+export async function updateDashboardRegistryItem(id: string, updates: Partial<DashboardRegistryItem>): Promise<DashboardRegistryItem> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const patch = { ...updates, updated_by: user?.id ?? null };
+  const { data, error } = await client.from("dashboard_registry").update(patch).eq("id", id).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Admin role required." : error.message);
+  return data as DashboardRegistryItem;
+}
+
+export async function createDashboardRegistryItem(item: Partial<DashboardRegistryItem>): Promise<DashboardRegistryItem> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const row = { ...item, is_system: false, created_by: user?.id ?? null, updated_by: user?.id ?? null };
+  const { data, error } = await client.from("dashboard_registry").insert(row).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Admin role required." : error.message);
+  return data as DashboardRegistryItem;
+}
+
+export async function deleteDashboardRegistryItem(id: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from("dashboard_registry").delete().eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Admin role required." : error.message);
 }

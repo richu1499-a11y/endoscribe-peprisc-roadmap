@@ -208,6 +208,23 @@ export default function SetupPage() {
       results.push({ label: "validation_items table", status: "warn", detail: "Table not found. Run supabase/migrations/004_validation_dashboard.sql" });
     }
 
+    // Dashboard registry
+    try {
+      const { count: dashCount, error: dashError } = await sb.from("dashboard_registry").select("id", { count: "exact", head: true });
+      if (dashError) throw dashError;
+      const dc = dashCount ?? 0;
+      results.push({ label: "dashboard_registry table", status: dc > 0 ? "pass" : "warn", detail: dc > 0 ? `${dc} dashboard(s)` : "Table exists but empty" });
+      if (dc > 0) {
+        const { data: visData } = await sb.from("dashboard_registry").select("id").eq("is_visible", true);
+        const { data: hidData } = await sb.from("dashboard_registry").select("id").eq("is_visible", false);
+        const { data: admData } = await sb.from("dashboard_registry").select("id").eq("required_role", "admin");
+        results.push({ label: "Visible dashboards", status: "pass", detail: `${visData?.length ?? 0} visible, ${hidData?.length ?? 0} hidden` });
+        if ((admData?.length ?? 0) > 0) results.push({ label: "Admin-only dashboards", status: "pass", detail: `${admData?.length ?? 0} admin-restricted` });
+      }
+    } catch {
+      results.push({ label: "dashboard_registry table", status: "warn", detail: "Table not found. Run supabase/migrations/005_dashboard_registry.sql" });
+    }
+
     setChecks(results);
     setRunning(false);
   }

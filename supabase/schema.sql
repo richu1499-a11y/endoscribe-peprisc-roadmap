@@ -449,6 +449,48 @@ create policy "Editors can manage validation_items"
   );
 
 -- ============================================================
+-- dashboard_registry (admin-managed navigation)
+-- ============================================================
+create table if not exists dashboard_registry (
+  id             uuid primary key default gen_random_uuid(),
+  slug           text unique not null,
+  title          text not null,
+  description    text,
+  route          text not null,
+  icon           text,
+  category       text not null default 'Core',
+  order_index    integer not null default 100,
+  is_visible     boolean not null default true,
+  is_system      boolean not null default true,
+  required_role  text not null default 'viewer' check (required_role in ('viewer','editor','admin')),
+  layout_config  jsonb not null default '{}'::jsonb,
+  widget_config  jsonb not null default '[]'::jsonb,
+  notes          text,
+  created_by     uuid references public.profiles(id),
+  updated_by     uuid references public.profiles(id),
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
+);
+
+create trigger dashboard_registry_updated_at
+  before update on dashboard_registry
+  for each row execute function set_updated_at();
+
+alter table dashboard_registry enable row level security;
+
+create policy "Authenticated can read visible dashboards"
+  on dashboard_registry for select to authenticated
+  using (is_visible = true or exists (
+    select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'
+  ));
+
+create policy "Admins can manage dashboard_registry"
+  on dashboard_registry for all to authenticated
+  using (exists (
+    select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'
+  ));
+
+-- ============================================================
 -- Enable Supabase Realtime for tasks table
 -- ============================================================
 -- Run in Supabase Dashboard > Database > Replication, or:
