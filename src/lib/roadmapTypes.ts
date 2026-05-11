@@ -332,6 +332,38 @@ export interface AdminPageSetting {
   config: Record<string, unknown>;
 }
 
+// ---------------------------------------------------------------------------
+// Audit Log
+// ---------------------------------------------------------------------------
+export const AUDIT_ACTIONS = [
+  "created", "updated", "deleted", "archived", "unarchived",
+  "role_changed", "visibility_changed", "reordered",
+  "widget_config_updated", "linked", "unlinked",
+] as const;
+
+export const AUDIT_ENTITY_TYPES = [
+  "task", "workstream", "milestone", "risk", "decision", "future_module",
+  "regulatory_item", "governance_item", "validation_item",
+  "dashboard", "dashboard_widget", "dashboard_task_link",
+  "profile", "admin_entity_registry", "admin_page_settings",
+] as const;
+
+export const ROLE_OPTIONS = ["viewer", "editor", "admin"] as const;
+
+export interface AdminAuditLog {
+  id: string;
+  actor_id: string | null;
+  actor_email: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  entity_label: string;
+  previous_value: Record<string, unknown> | null;
+  new_value: Record<string, unknown> | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
 export const DASHBOARD_WIDGET_TYPES = [
   "metric_cards", "task_table", "my_week", "assigned_tasks", "gantt",
   "network", "regulatory_items", "governance_items", "validation_items",

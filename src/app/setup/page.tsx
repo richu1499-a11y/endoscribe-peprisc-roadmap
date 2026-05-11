@@ -276,6 +276,15 @@ export default function SetupPage() {
       results.push({ label: "admin_page_settings table", status: "warn", detail: "Table not found. Run supabase/migrations/008_admin_ui_configuration_registry.sql" });
     }
 
+    // Admin audit log
+    try {
+      const { count: auditCount, error: auditErr } = await sb.from("admin_audit_log").select("id", { count: "exact", head: true });
+      if (auditErr) throw auditErr;
+      results.push({ label: "admin_audit_log table", status: "pass", detail: `${auditCount ?? 0} audit entries` });
+    } catch {
+      results.push({ label: "admin_audit_log table", status: "warn", detail: "Table not found. Run supabase/migrations/009_admin_controls_hardening.sql" });
+    }
+
     setChecks(results);
     setRunning(false);
   }

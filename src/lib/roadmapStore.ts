@@ -2,7 +2,7 @@
 
 import { getSupabaseBrowser, isSupabaseConfigured } from "./supabase/browser";
 import { MOCK_WORKSTREAMS, MOCK_TASKS, MOCK_DECISIONS, MOCK_RISKS, MOCK_MILESTONES } from "./mockData";
-import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem, DashboardRegistryItem, DashboardWidget, DashboardTaskLink, FutureModule, AdminEntityRegistryItem, AdminPageSetting } from "./roadmapTypes";
+import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem, DashboardRegistryItem, DashboardWidget, DashboardTaskLink, FutureModule, AdminEntityRegistryItem, AdminPageSetting, AdminAuditLog } from "./roadmapTypes";
 
 const isDev = process.env.NODE_ENV === "development";
 let localTasks: RoadmapTask[] = isDev ? [...MOCK_TASKS] : [];
@@ -655,4 +655,64 @@ export async function updateAdminPageSetting(pageKey: string, updates: Partial<A
   const { data, error } = await client.from("admin_page_settings").update({ ...updates, updated_by: user?.id ?? null }).eq("page_key", pageKey).select().single();
   if (error) throw new Error(error.message.includes("policy") ? "Admin required." : error.message);
   return data as AdminPageSetting;
+}
+
+// ---------------------------------------------------------------------------
+// Admin Audit Log
+// ---------------------------------------------------------------------------
+export async function createAuditLog(entry: Partial<AdminAuditLog>): Promise<void> {
+  if (!live()) return;
+  try {
+    const client = sb()!;
+    const { data: { user } } = await client.auth.getUser();
+    await client.from("admin_audit_log").insert({
+      ...entry,
+      actor_id: user?.id ?? null,
+      actor_email: user?.email ?? "unknown",
+    });
+  } catch { /* best-effort */ }
+}
+
+export async function getAuditLogs(limit = 200): Promise<AdminAuditLog[]> {
+  if (!live()) return [];
+  const { data, error } = await sb()!.from("admin_audit_log").select("*").order("created_at", { ascending: false }).limit(limit);
+  if (error) { if (error.code === "42P01") return []; console.error(error); return []; }
+  return data as AdminAuditLog[];
+}
+
+// ---------------------------------------------------------------------------
+// Profile Role Management
+// ---------------------------------------------------------------------------
+export async function updateProfileRole(profileId: string, newRole: string): Promise<Profile> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  // Get current profile for audit
+  const { data: prev } = await client.from("profiles").select("*").eq("id", profileId).single();
+  const { data, error } = await client.from("profiles").update({ role: newRole }).eq("id", profileId).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied. Admin role required to change user roles." : error.message);
+  await createAuditLog({
+    action: "role_changed", entity_type: "profile", entity_id: profileId,
+    entity_label: data.email, previous_value: prev ? { role: prev.role } : null,
+    new_value: { role: newRole },
+  });
+  return data as Profile;
+}
+
+// ---------------------------------------------------------------------------
+// Archive helpers
+// ---------------------------------------------------------------------------
+export async function archiveEntity(tableName: string, id: string, label?: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const { error } = await client.from(tableName).update({ is_archived: true }).eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await createAuditLog({ action: "archived", entity_type: tableName, entity_id: id, entity_label: label ?? id, new_value: { is_archived: true }, metadata: { archived_by: user?.id } });
+}
+
+export async function unarchiveEntity(tableName: string, id: string, label?: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from(tableName).update({ is_archived: false }).eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await createAuditLog({ action: "unarchived", entity_type: tableName, entity_id: id, entity_label: label ?? id, new_value: { is_archived: false } });
 }

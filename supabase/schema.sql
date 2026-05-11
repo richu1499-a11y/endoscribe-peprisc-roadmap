@@ -629,6 +629,20 @@ create policy "Authenticated can read admin_page_settings" on admin_page_setting
 create policy "Admins can manage admin_page_settings" on admin_page_settings for all to authenticated using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'));
 
 -- ============================================================
+-- admin_audit_log (immutable audit trail)
+-- ============================================================
+create table if not exists admin_audit_log (
+  id uuid primary key default gen_random_uuid(),
+  actor_id uuid references public.profiles(id), actor_email text,
+  action text not null, entity_type text not null, entity_id text, entity_label text,
+  previous_value jsonb, new_value jsonb, metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+alter table admin_audit_log enable row level security;
+create policy "Admins can read admin_audit_log" on admin_audit_log for select to authenticated using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'));
+create policy "Authenticated can insert admin_audit_log" on admin_audit_log for insert to authenticated with check (true);
+
+-- ============================================================
 -- Enable Supabase Realtime for tasks table
 -- ============================================================
 -- Run in Supabase Dashboard > Database > Replication, or:
