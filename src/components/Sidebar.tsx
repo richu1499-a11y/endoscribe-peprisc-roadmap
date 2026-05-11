@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
-  LayoutDashboard, ListChecks, Map, Target, Settings, Wrench, Users, GanttChart, Network,
+  LayoutDashboard, ListChecks, Map, Target, Settings, Wrench, Users, GanttChart, Network, Shield,
 } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
 import { getCurrentRole, isAdmin as checkIsAdmin } from "@/lib/auth";
@@ -16,6 +16,7 @@ const NAV_MAIN = [
   { href: "/roadmap",   label: "Roadmap",   icon: Map },
   { href: "/timeline",  label: "Timeline",  icon: GanttChart },
   { href: "/network",   label: "Network",   icon: Network },
+  { href: "/regulatory", label: "FDA / Reg", icon: Shield },
   { href: "/tasks",     label: "Tasks",     icon: ListChecks },
 ];
 

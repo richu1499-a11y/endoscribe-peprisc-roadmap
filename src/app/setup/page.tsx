@@ -156,6 +156,24 @@ export default function SetupPage() {
       results.push({ label: "Profiles", status: "warn", detail: "Could not count profiles" });
     }
 
+    // Regulatory items
+    try {
+      const { count: regCount, error: regError } = await sb.from("regulatory_items").select("id", { count: "exact", head: true });
+      if (regError) throw regError;
+      const rc = regCount ?? 0;
+      results.push({ label: "regulatory_items table", status: rc > 0 ? "pass" : "warn", detail: rc > 0 ? `${rc} item(s)` : "Table exists but empty" });
+      if (rc > 0) {
+        const { data: highRiskData } = await sb.from("regulatory_items").select("id").eq("regulatory_risk", "High");
+        const { data: noOwnerData } = await sb.from("regulatory_items").select("id").is("owner", null);
+        const highCount = highRiskData?.length ?? 0;
+        const noOwnerCount = noOwnerData?.length ?? 0;
+        if (highCount > 0) results.push({ label: "High-risk regulatory items", status: "warn", detail: `${highCount} item(s) at high regulatory risk` });
+        if (noOwnerCount > 0) results.push({ label: "Regulatory items without owner", status: "warn", detail: `${noOwnerCount} item(s) need an owner` });
+      }
+    } catch {
+      results.push({ label: "regulatory_items table", status: "warn", detail: "Table not found. Run supabase/migrations/002_regulatory_dashboard.sql" });
+    }
+
     setChecks(results);
     setRunning(false);
   }

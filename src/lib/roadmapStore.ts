@@ -2,7 +2,7 @@
 
 import { getSupabaseBrowser, isSupabaseConfigured } from "./supabase/browser";
 import { MOCK_WORKSTREAMS, MOCK_TASKS, MOCK_DECISIONS, MOCK_RISKS, MOCK_MILESTONES } from "./mockData";
-import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees } from "./roadmapTypes";
+import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem } from "./roadmapTypes";
 
 const isDev = process.env.NODE_ENV === "development";
 let localTasks: RoadmapTask[] = isDev ? [...MOCK_TASKS] : [];
@@ -179,4 +179,53 @@ export async function getRisks(): Promise<RiskItem[]> {
   const { data, error } = await sb()!.from("risks").select("*").order("id");
   if (error) { console.error(error); return isDev ? MOCK_RISKS : []; }
   return data as RiskItem[];
+}
+
+// ---------------------------------------------------------------------------
+// Regulatory Items
+// ---------------------------------------------------------------------------
+const MOCK_REGULATORY: RegulatoryItem[] = isDev ? [
+  { id: "reg-1", title: "Define intended use for EndoScribe documentation", description: "", category: "Intended Use", status: "Not started", priority: "High", owner: "", due_date: null, related_task_ids: ["FDA-001"], related_decision_ids: [], regulatory_risk: "Low", evidence_needed: "Clinical workflow description", current_evidence: "", decision_needed: "PI sign-off", next_action: "Draft intended-use statement", notes: "" },
+  { id: "reg-2", title: "Assess FDA non-device CDS criteria", description: "", category: "CDS Criteria", status: "Not started", priority: "High", owner: "", due_date: null, related_task_ids: ["FDA-003"], related_decision_ids: [], regulatory_risk: "Moderate", evidence_needed: "Four-prong analysis", current_evidence: "", decision_needed: "CDS qualification determination", next_action: "Review FDA CDS guidance", notes: "" },
+  { id: "reg-3", title: "Determine clinician-facing PEPRisc classification", description: "", category: "SaMD / Device Function", status: "Not started", priority: "Critical", owner: "", due_date: null, related_task_ids: ["FDA-003", "CLIN-002"], related_decision_ids: [], regulatory_risk: "High", evidence_needed: "Regulatory precedent analysis", current_evidence: "", decision_needed: "Output audience decision", next_action: "Review FDA CDS four-prong test", notes: "" },
+] : [];
+
+export async function getRegulatoryItems(): Promise<RegulatoryItem[]> {
+  if (!live()) return MOCK_REGULATORY;
+  const { data, error } = await sb()!.from("regulatory_items").select("*").order("created_at");
+  if (error) {
+    if (error.code === "42P01" || error.message.includes("does not exist")) return MOCK_REGULATORY;
+    console.error(error);
+    return MOCK_REGULATORY;
+  }
+  return data as RegulatoryItem[];
+}
+
+export async function createRegulatoryItem(item: Partial<RegulatoryItem>): Promise<RegulatoryItem> {
+  if (!live()) throw new Error(isDev ? "Mock mode: regulatory items not persisted." : "Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const row = { ...item, created_by: user?.id ?? null, updated_by: user?.id ?? null };
+  const { data, error } = await client.from("regulatory_items").insert(row).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied. Editor or admin role required." : error.message);
+  await logActivity("regulatory_item", data.id, "create", `Created: ${item.title}`);
+  return data as RegulatoryItem;
+}
+
+export async function updateRegulatoryItem(id: string, updates: Partial<RegulatoryItem>): Promise<RegulatoryItem> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const patch = { ...updates, updated_by: user?.id ?? null };
+  const { data, error } = await client.from("regulatory_items").update(patch).eq("id", id).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("regulatory_item", id, "update", `Updated: ${updates.title ?? id}`);
+  return data as RegulatoryItem;
+}
+
+export async function deleteRegulatoryItem(id: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from("regulatory_items").delete().eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("regulatory_item", id, "delete", `Deleted regulatory item ${id}`);
 }

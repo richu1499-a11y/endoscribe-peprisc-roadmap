@@ -100,3 +100,41 @@ export interface Profile {
   full_name: string;
   role: "admin" | "editor" | "viewer";
 }
+
+// ---------------------------------------------------------------------------
+// Regulatory
+// ---------------------------------------------------------------------------
+export const REGULATORY_CATEGORIES = [
+  "Intended Use", "CDS Criteria", "SaMD / Device Function",
+  "Platform vs Module", "Human-in-the-Loop", "Risk Analysis",
+  "Validation Evidence", "FDA Pre-Submission",
+  "AI Lifecycle / Change Control", "Industry / Partner Pathway",
+] as const;
+export type RegulatoryCategory = (typeof REGULATORY_CATEGORIES)[number];
+
+export const REGULATORY_ITEM_STATUSES = [
+  "Not started", "In progress", "Needs decision", "Under review", "Complete", "Deferred",
+] as const;
+export type RegulatoryItemStatus = (typeof REGULATORY_ITEM_STATUSES)[number];
+
+export const REGULATORY_RISK_LEVELS = ["Low", "Moderate", "High", "Unknown"] as const;
+export type RegulatoryRiskLevel = (typeof REGULATORY_RISK_LEVELS)[number];
+
+export interface RegulatoryItem {
+  id: string;
+  title: string;
+  description: string;
+  category: RegulatoryCategory | string;
+  status: RegulatoryItemStatus | string;
+  priority: string;
+  owner: string;
+  due_date: string | null;
+  related_task_ids: string[];
+  related_decision_ids: string[];
+  regulatory_risk: RegulatoryRiskLevel | string;
+  evidence_needed: string;
+  current_evidence: string;
+  decision_needed: string;
+  next_action: string;
+  notes: string;
+}
