@@ -4,6 +4,7 @@ import { getSupabaseBrowser, isSupabaseConfigured } from "./supabase/browser";
 import type { Profile } from "./roadmapTypes";
 
 export type UserRole = "admin" | "editor" | "viewer";
+export type AppRole = "admin" | "user";
 
 export async function getCurrentUser() {
   const sb = getSupabaseBrowser();
@@ -26,6 +27,13 @@ export async function getCurrentRole(): Promise<UserRole | null> {
   return (profile?.role as UserRole) ?? null;
 }
 
+export async function getCurrentAppRole(): Promise<AppRole> {
+  const profile = await getCurrentProfile();
+  if (profile?.app_role === "admin" || profile?.role === "admin") return "admin";
+  return "user";
+}
+
+// Permission helpers
 export function isAdmin(role: string | null | undefined): boolean {
   return role === "admin";
 }
@@ -34,9 +42,18 @@ export function canEdit(role: string | null | undefined): boolean {
   return role === "admin" || role === "editor";
 }
 
-export function canView(role: string | null | undefined): boolean {
-  return role === "admin" || role === "editor" || role === "viewer";
+export function canView(): boolean {
+  return true;
 }
+
+// App-role permission helpers
+export function canCreateTask(): boolean { return true; } // all authenticated users
+export function canEditTask(): boolean { return true; } // all authenticated users
+export function canDeleteTask(appRole: AppRole): boolean { return appRole === "admin"; }
+export function canManageUsers(appRole: AppRole): boolean { return appRole === "admin"; }
+export function canManageAppStructure(appRole: AppRole): boolean { return appRole === "admin"; }
+export function canCreateMeeting(): boolean { return true; }
+export function canEditMeeting(): boolean { return true; }
 
 export async function signIn(email: string, password: string) {
   const sb = getSupabaseBrowser();

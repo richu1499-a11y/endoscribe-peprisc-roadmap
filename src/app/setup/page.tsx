@@ -303,6 +303,16 @@ export default function SetupPage() {
       results.push({ label: "meetings table", status: "warn", detail: "Table not found. Run supabase/migrations/011_workspace_os_cleanup.sql" });
     }
 
+    // App roles
+    try {
+      const { data: adminData } = await sb.from("profiles").select("id").eq("app_role", "admin");
+      const { data: protectedData } = await sb.from("profiles").select("id").eq("is_protected_admin", true);
+      results.push({ label: "Admin users", status: (adminData?.length ?? 0) > 0 ? "pass" : "warn", detail: `${adminData?.length ?? 0} admin(s), ${protectedData?.length ?? 0} protected` });
+      if ((protectedData?.length ?? 0) === 0) results.push({ label: "Protected admin", status: "warn", detail: "No protected admin set. Consider marking primary admin as protected." });
+    } catch {
+      results.push({ label: "App roles", status: "warn", detail: "app_role column may not exist. Run migration 012." });
+    }
+
     setChecks(results);
     setRunning(false);
   }

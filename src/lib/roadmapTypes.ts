@@ -102,6 +102,8 @@ export interface Profile {
   email: string;
   full_name: string;
   role: "admin" | "editor" | "viewer";
+  app_role?: "admin" | "user";
+  is_protected_admin?: boolean;
 }
 
 // ---------------------------------------------------------------------------

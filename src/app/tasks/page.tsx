@@ -235,10 +235,8 @@ export default function TasksPage() {
           <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl max-h-[85vh] overflow-y-auto">
             <TaskForm
               task={editing === "new" ? null : editing}
-              workstreams={workstreams}
               profiles={profiles}
               currentAssigneeIds={editingAssigneeIds}
-              isAdmin={userIsAdmin}
               onSave={handleSave}
               onCancel={() => setEditing(null)}
             />
