@@ -2,7 +2,7 @@
 
 import { getSupabaseBrowser, isSupabaseConfigured } from "./supabase/browser";
 import { MOCK_WORKSTREAMS, MOCK_TASKS, MOCK_DECISIONS, MOCK_RISKS, MOCK_MILESTONES } from "./mockData";
-import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem } from "./roadmapTypes";
+import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem } from "./roadmapTypes";
 
 const isDev = process.env.NODE_ENV === "development";
 let localTasks: RoadmapTask[] = isDev ? [...MOCK_TASKS] : [];
@@ -228,4 +228,53 @@ export async function deleteRegulatoryItem(id: string): Promise<void> {
   const { error } = await sb()!.from("regulatory_items").delete().eq("id", id);
   if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
   await logActivity("regulatory_item", id, "delete", `Deleted regulatory item ${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// Governance Items (IRB / HIPAA / Hopkins IT)
+// ---------------------------------------------------------------------------
+const MOCK_GOVERNANCE: GovernanceItem[] = isDev ? [
+  { id: "gov-1", title: "Determine whether IRB amendment is required", description: "", category: "IRB Amendment", status: "Not started", priority: "Critical", owner: "", due_date: null, related_task_ids: ["IRB-001"], related_decision_ids: [], phi_involved: true, data_type: "", data_location: "", compute_location: "", irb_status: "Not assessed", hipaa_risk: "High", hopkins_it_status: "Not assessed", approval_needed: "IRB office", current_state: "Not assessed", gap: "Amendment coverage needed", decision_needed: "Does current IRB cover planned activities?", next_action: "Review current IRB protocol", notes: "" },
+  { id: "gov-2", title: "Define approved storage for patient audio", description: "", category: "Storage / Access Control", status: "Not started", priority: "High", owner: "", due_date: null, related_task_ids: ["IRB-004"], related_decision_ids: [], phi_involved: true, data_type: "Audio", data_location: "TBD", compute_location: "", irb_status: "Not assessed", hipaa_risk: "High", hopkins_it_status: "Needs review", approval_needed: "Hopkins IT", current_state: "Not confirmed", gap: "Need Hopkins-approved storage", decision_needed: "", next_action: "Contact Hopkins IT", notes: "" },
+  { id: "gov-3", title: "Prohibit PHI in public AI tools", description: "", category: "External Tool Restriction", status: "Not started", priority: "Critical", owner: "", due_date: null, related_task_ids: ["IRB-005"], related_decision_ids: [], phi_involved: true, data_type: "", data_location: "", compute_location: "", irb_status: "Not assessed", hipaa_risk: "High", hopkins_it_status: "Not assessed", approval_needed: "Team policy", current_state: "No formal policy", gap: "PHI boundary rule not documented", decision_needed: "", next_action: "Draft PHI boundary rule", notes: "" },
+] : [];
+
+export async function getGovernanceItems(): Promise<GovernanceItem[]> {
+  if (!live()) return MOCK_GOVERNANCE;
+  const { data, error } = await sb()!.from("governance_items").select("*").order("created_at");
+  if (error) {
+    if (error.code === "42P01" || error.message.includes("does not exist")) return MOCK_GOVERNANCE;
+    console.error(error);
+    return MOCK_GOVERNANCE;
+  }
+  return data as GovernanceItem[];
+}
+
+export async function createGovernanceItem(item: Partial<GovernanceItem>): Promise<GovernanceItem> {
+  if (!live()) throw new Error(isDev ? "Mock mode: governance items not persisted." : "Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const row = { ...item, created_by: user?.id ?? null, updated_by: user?.id ?? null };
+  const { data, error } = await client.from("governance_items").insert(row).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("governance_item", data.id, "create", `Created: ${item.title}`);
+  return data as GovernanceItem;
+}
+
+export async function updateGovernanceItem(id: string, updates: Partial<GovernanceItem>): Promise<GovernanceItem> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const patch = { ...updates, updated_by: user?.id ?? null };
+  const { data, error } = await client.from("governance_items").update(patch).eq("id", id).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("governance_item", id, "update", `Updated: ${updates.title ?? id}`);
+  return data as GovernanceItem;
+}
+
+export async function deleteGovernanceItem(id: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from("governance_items").delete().eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Permission denied." : error.message);
+  await logActivity("governance_item", id, "delete", `Deleted governance item ${id}`);
 }

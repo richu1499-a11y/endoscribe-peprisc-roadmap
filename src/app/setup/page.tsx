@@ -174,6 +174,22 @@ export default function SetupPage() {
       results.push({ label: "regulatory_items table", status: "warn", detail: "Table not found. Run supabase/migrations/002_regulatory_dashboard.sql" });
     }
 
+    // Governance items
+    try {
+      const { count: govCount, error: govError } = await sb.from("governance_items").select("id", { count: "exact", head: true });
+      if (govError) throw govError;
+      const gc = govCount ?? 0;
+      results.push({ label: "governance_items table", status: gc > 0 ? "pass" : "warn", detail: gc > 0 ? `${gc} item(s)` : "Table exists but empty" });
+      if (gc > 0) {
+        const { data: phiData } = await sb.from("governance_items").select("id").eq("phi_involved", true);
+        const { data: highHipaaData } = await sb.from("governance_items").select("id").eq("hipaa_risk", "High");
+        results.push({ label: "PHI-involved governance items", status: "warn", detail: `${phiData?.length ?? 0} item(s) involve PHI` });
+        if ((highHipaaData?.length ?? 0) > 0) results.push({ label: "High HIPAA risk governance items", status: "warn", detail: `${highHipaaData?.length ?? 0} item(s)` });
+      }
+    } catch {
+      results.push({ label: "governance_items table", status: "warn", detail: "Table not found. Run supabase/migrations/003_irb_hipaa_dashboard.sql" });
+    }
+
     setChecks(results);
     setRunning(false);
   }

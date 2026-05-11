@@ -120,6 +120,59 @@ export type RegulatoryItemStatus = (typeof REGULATORY_ITEM_STATUSES)[number];
 export const REGULATORY_RISK_LEVELS = ["Low", "Moderate", "High", "Unknown"] as const;
 export type RegulatoryRiskLevel = (typeof REGULATORY_RISK_LEVELS)[number];
 
+// ---------------------------------------------------------------------------
+// Governance (IRB / HIPAA / Hopkins IT)
+// ---------------------------------------------------------------------------
+export const GOVERNANCE_CATEGORIES = [
+  "IRB Amendment", "Consent Language", "Audio Recording",
+  "AI Transcription", "PHI Data Flow", "Storage / Access Control",
+  "Secure Compute", "Personnel Access", "Hopkins IT Review",
+  "External Tool Restriction", "Data De-identification",
+  "Audit Trail", "Prospective Shadow Workflow",
+] as const;
+export type GovernanceCategory = (typeof GOVERNANCE_CATEGORIES)[number];
+
+export const GOVERNANCE_ITEM_STATUSES = [
+  "Not started", "In progress", "Needs decision", "Under review",
+  "Approved", "Complete", "Deferred", "Blocked",
+] as const;
+
+export const HIPAA_RISK_LEVELS = ["Low", "Moderate", "High", "Unknown"] as const;
+export const IRB_STATUS_VALUES = [
+  "Not assessed", "Amendment likely needed", "Amendment drafted",
+  "Submitted", "Approved", "Not required", "Unknown",
+] as const;
+export const HOPKINS_IT_STATUS_VALUES = [
+  "Not assessed", "Needs review", "Under review",
+  "Approved", "Not approved", "Unknown",
+] as const;
+
+export interface GovernanceItem {
+  id: string;
+  title: string;
+  description: string;
+  category: GovernanceCategory | string;
+  status: string;
+  priority: string;
+  owner: string;
+  due_date: string | null;
+  related_task_ids: string[];
+  related_decision_ids: string[];
+  phi_involved: boolean;
+  data_type: string;
+  data_location: string;
+  compute_location: string;
+  irb_status: string;
+  hipaa_risk: string;
+  hopkins_it_status: string;
+  approval_needed: string;
+  current_state: string;
+  gap: string;
+  decision_needed: string;
+  next_action: string;
+  notes: string;
+}
+
 export interface RegulatoryItem {
   id: string;
   title: string;
