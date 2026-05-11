@@ -49,6 +49,20 @@ export interface RoadmapTask {
   notes: string;
 }
 
+export interface TaskAssignment {
+  id: string;
+  task_id: string;
+  user_id: string;
+  assigned_by: string | null;
+  assigned_at: string;
+  role: string;
+  notes: string | null;
+}
+
+export interface TaskWithAssignees extends RoadmapTask {
+  assignees: Profile[];
+}
+
 export interface Milestone {
   id: string;
   title: string;

@@ -124,10 +124,36 @@ export default function SetupPage() {
     // Realtime
     try {
       const channel = sb.channel("setup-test");
-      results.push({ label: "Realtime", status: "pass", detail: "Channel created. Ensure Realtime is enabled for the tasks table in Dashboard > Replication." });
+      results.push({ label: "Realtime", status: "pass", detail: "Channel created. Ensure Realtime is enabled for tasks table." });
       sb.removeChannel(channel);
     } catch {
       results.push({ label: "Realtime", status: "warn", detail: "Could not create realtime channel" });
+    }
+
+    // Task assignments
+    try {
+      const { count, error } = await sb.from("task_assignments").select("id", { count: "exact", head: true });
+      if (error) throw error;
+      const n = count ?? 0;
+      results.push({ label: "task_assignments table", status: "pass", detail: `${n} assignment(s)` });
+
+      // Count tasks with at least one assignee
+      if (n > 0 && taskCount > 0) {
+        const { data: assignData } = await sb.from("task_assignments").select("task_id");
+        const uniqueTasks = new Set((assignData ?? []).map((a: { task_id: string }) => a.task_id));
+        const unassigned = taskCount - uniqueTasks.size;
+        results.push({ label: "Assignment coverage", status: unassigned > 0 ? "warn" : "pass", detail: `${uniqueTasks.size} assigned, ${unassigned} unassigned` });
+      }
+    } catch {
+      results.push({ label: "task_assignments table", status: "warn", detail: "Table not found. Run supabase/migrations/001_task_assignments.sql" });
+    }
+
+    // Profiles count
+    try {
+      const { count: pCount } = await sb.from("profiles").select("id", { count: "exact", head: true });
+      results.push({ label: "Profiles", status: "pass", detail: `${pCount ?? 0} user(s)` });
+    } catch {
+      results.push({ label: "Profiles", status: "warn", detail: "Could not count profiles" });
     }
 
     setChecks(results);

@@ -285,6 +285,33 @@ end;
 $$;
 
 -- ============================================================
+-- task_assignments (links tasks to user profiles)
+-- ============================================================
+-- The tasks.owner text field is a human-readable label.
+-- task_assignments is the authoritative user assignment layer.
+create table if not exists task_assignments (
+  id          uuid primary key default gen_random_uuid(),
+  task_id     text not null references public.tasks(id) on delete cascade,
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  assigned_by uuid references public.profiles(id),
+  assigned_at timestamptz not null default now(),
+  role        text not null default 'assignee',
+  notes       text,
+  unique(task_id, user_id)
+);
+
+alter table task_assignments enable row level security;
+
+create policy "Authenticated can read task_assignments"
+  on task_assignments for select to authenticated using (true);
+
+create policy "Admins can manage task_assignments"
+  on task_assignments for all to authenticated
+  using (
+    exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin')
+  );
+
+-- ============================================================
 -- Enable Supabase Realtime for tasks table
 -- ============================================================
 -- Run in Supabase Dashboard > Database > Replication, or:

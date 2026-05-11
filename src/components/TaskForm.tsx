@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { RoadmapTask, Workstream } from "@/lib/roadmapTypes";
+import type { RoadmapTask, Workstream, Profile } from "@/lib/roadmapTypes";
 import { TASK_STATUSES, PRIORITIES, REGULATORY_LEVELS, EVIDENCE_STAGES } from "@/lib/roadmapTypes";
 
 interface Props {
-  task: RoadmapTask | null;        // null = create mode
+  task: RoadmapTask | null;
   workstreams: Workstream[];
-  onSave: (task: RoadmapTask) => void;
+  profiles?: Profile[];
+  currentAssigneeIds?: string[];
+  isAdmin?: boolean;
+  onSave: (task: RoadmapTask, assigneeIds?: string[]) => void;
   onCancel: () => void;
 }
 
@@ -22,9 +25,14 @@ function blank(): RoadmapTask {
   };
 }
 
-export default function TaskForm({ task, workstreams, onSave, onCancel }: Props) {
+function displayName(p: Profile): string {
+  return p.full_name || p.email;
+}
+
+export default function TaskForm({ task, workstreams, profiles, currentAssigneeIds, isAdmin, onSave, onCancel }: Props) {
   const initial = useMemo(() => task ?? blank(), [task]);
   const [form, setForm] = useState<RoadmapTask>(initial);
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>(currentAssigneeIds ?? []);
 
   const isNew = !task;
 
@@ -32,9 +40,13 @@ export default function TaskForm({ task, workstreams, onSave, onCancel }: Props)
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
+  function toggleAssignee(uid: string) {
+    setSelectedAssignees(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]);
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSave(form);
+    onSave(form, isAdmin ? selectedAssignees : undefined);
   }
 
   const inputCls = "w-full rounded border border-slate-300 px-3 py-1.5 text-sm focus:border-indigo-400 focus:outline-none";
@@ -70,7 +82,7 @@ export default function TaskForm({ task, workstreams, onSave, onCancel }: Props)
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className={labelCls}>Owner</label>
+          <label className={labelCls}>Owner (display name)</label>
           <input className={inputCls} value={form.owner} onChange={e => set("owner", e.target.value)} />
         </div>
         <div>
@@ -86,6 +98,25 @@ export default function TaskForm({ task, workstreams, onSave, onCancel }: Props)
           </select>
         </div>
       </div>
+
+      {/* Assignees -- admin only */}
+      {isAdmin && profiles && profiles.length > 0 && (
+        <div>
+          <label className={labelCls}>Assign to users</label>
+          <div className="max-h-32 overflow-y-auto rounded border border-slate-300 p-2 space-y-1">
+            {profiles.map(p => (
+              <label key={p.id} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 px-1 rounded">
+                <input type="checkbox" checked={selectedAssignees.includes(p.id)} onChange={() => toggleAssignee(p.id)} className="rounded" />
+                {displayName(p)}
+                <span className="text-xs text-slate-400">{p.role}</span>
+              </label>
+            ))}
+          </div>
+          {selectedAssignees.length > 0 && (
+            <p className="mt-1 text-xs text-slate-500">{selectedAssignees.length} user(s) selected</p>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
