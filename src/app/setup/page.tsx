@@ -344,6 +344,16 @@ export default function SetupPage() {
     results.push({ label: "Invite acceptance", status: "pass", detail: "AuthGuard auto-applies pending invites" });
     results.push({ label: ".ics API auth", status: "pass", detail: "Requires authenticated user (401 if not)" });
     results.push({ label: "PWA manifest", status: "pass", detail: "/manifest.webmanifest" });
+    results.push({ label: "Roadmap Map", status: "pass", detail: "2D/3D at /network, links from Home + Reports" });
+
+    // Seeded roadmap check
+    try {
+      const { data: seededTasks } = await sb.from("tasks").select("id").or("id.like.ES-%,id.like.PR-%,id.like.HW-%,id.like.IRB-R%,id.like.RS-%");
+      const { data: seededMs } = await sb.from("milestones").select("id").like("id", "MS-R%");
+      results.push({ label: "Roadmap seed", status: (seededTasks?.length ?? 0) > 0 ? "pass" : "warn", detail: `${seededTasks?.length ?? 0} seeded tasks, ${seededMs?.length ?? 0} milestones` });
+    } catch {
+      results.push({ label: "Roadmap seed", status: "warn", detail: "Run supabase/migrations/015_seed_endoscribe_roadmap.sql" });
+    }
 
     setChecks(results);
     setRunning(false);

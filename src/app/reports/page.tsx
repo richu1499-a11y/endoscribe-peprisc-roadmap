@@ -12,7 +12,7 @@ const REPORTS = [
 
 const ADVANCED = [
   { title: "Timeline / Gantt", description: "Interactive Gantt chart with filters and grouping.", icon: GanttChart, href: "/timeline" },
-  { title: "Network Map", description: "2D dependency network of tasks and workstreams.", icon: Network, href: "/network" },
+  { title: "Roadmap Map", description: "Interactive 2D/3D dependency network of tasks and workstreams.", icon: Network, href: "/network" },
   { title: "FDA / Regulatory", description: "Regulatory strategy and intended use matrix.", icon: Shield, href: "/regulatory" },
   { title: "IRB / Compliance", description: "Data governance and institutional review.", icon: Lock, href: "/governance" },
   { title: "Validation Science", description: "Evidence ladder and metrics matrix.", icon: FlaskConical, href: "/validation" },
@@ -27,6 +27,15 @@ export default function ReportsPage() {
         <h1 className="text-xl font-bold text-slate-900">Reports</h1>
         <p className="text-sm text-slate-500 mt-0.5">Summaries, exports, and analysis.</p>
       </div>
+
+      {/* Roadmap Map prominent entry */}
+      <Link href="/network" className="flex items-center gap-4 rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-white p-5 hover:shadow-md transition-all">
+        <Network className="h-8 w-8 text-indigo-600 shrink-0" />
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Roadmap Map</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Interactive 2D/3D dependency network showing workspaces, tasks, milestones, and relationships.</p>
+        </div>
+      </Link>
 
       <section>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

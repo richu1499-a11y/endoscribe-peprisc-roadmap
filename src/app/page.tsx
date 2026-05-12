@@ -9,7 +9,7 @@ import Image from "next/image";
 import Link from "next/link";
 import StatusBadge from "@/components/StatusBadge";
 import PriorityBadge from "@/components/PriorityBadge";
-import { Plus, CalendarDays, Briefcase, ListChecks } from "lucide-react";
+import { Plus, CalendarDays, Briefcase, ListChecks, Network } from "lucide-react";
 
 interface Meeting { id: string; title: string; start_time: string | null }
 
@@ -63,7 +63,7 @@ export default function HomePage() {
       )}
 
       {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Link href="/tasks" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 hover:border-indigo-300 transition-colors">
           <Plus className="h-4 w-4 text-indigo-600" />
           <span className="text-sm font-medium text-slate-700">New Task</span>
@@ -79,6 +79,10 @@ export default function HomePage() {
         <Link href="/tasks" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 hover:border-indigo-300 transition-colors">
           <ListChecks className="h-4 w-4 text-indigo-600" />
           <span className="text-sm font-medium text-slate-700">All Tasks</span>
+        </Link>
+        <Link href="/network" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 hover:border-indigo-300 transition-colors">
+          <Network className="h-4 w-4 text-indigo-600" />
+          <span className="text-sm font-medium text-slate-700">Roadmap Map</span>
         </Link>
       </div>
 

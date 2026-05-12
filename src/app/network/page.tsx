@@ -163,8 +163,8 @@ export default function NetworkPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-4">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Dependency Network / Spider Map</h1>
-        <p className="text-xs text-slate-500 mt-0.5">Interactive map of workstreams, tasks, dependencies, assignees, blockers, decisions, risks, and regulatory relevance. Drag to pan, scroll to zoom, click nodes for details.</p>
+        <h1 className="text-xl font-bold text-slate-900">Roadmap Map</h1>
+        <p className="text-xs text-slate-500 mt-0.5">Interactive dependency network showing workspaces, tasks, milestones, and relationships. Drag to pan, scroll to zoom, click nodes for details.</p>
       </div>
 
       <ComplianceBanner />
