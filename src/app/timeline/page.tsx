@@ -365,7 +365,6 @@ export default function TimelinePage() {
       {selected && (
         <TaskDetailDrawer
           task={selected}
-          workstreams={workstreams}
           onClose={() => setSelected(null)}
           onEdit={() => { window.location.href = `/tasks`; }}
         />

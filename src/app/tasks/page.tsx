@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getWorkstreams, getTasks, createTask, updateTask, deleteTask, subscribeToTasks, getProfiles, getTaskAssignments, getTasksWithAssignees, replaceTaskAssignees } from "@/lib/roadmapStore";
+import { getWorkstreams, getTasks, createTask, updateTask, subscribeToTasks, getProfiles, getTaskAssignments, getTasksWithAssignees, replaceTaskAssignees } from "@/lib/roadmapStore";
 import { uniqueValues } from "@/lib/roadmapUtils";
 import type { RoadmapTask, Workstream, Profile, TaskAssignment, TaskWithAssignees } from "@/lib/roadmapTypes";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
@@ -58,6 +58,7 @@ export default function TasksPage() {
   const [userCanEdit, setUserCanEdit] = useState(!isSupabaseConfigured && isDev);
   const [userIsAdmin, setUserIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [rawTasks, profs, assigns] = await Promise.all([getTasks(), getProfiles(), getTaskAssignments()]);
@@ -108,15 +109,19 @@ export default function TasksPage() {
   if (filterAssignee) filtered = filtered.filter(t => t.assignees.some(p => p.id === filterAssignee));
   if (filterWorkspace) filtered = filtered.filter(t => t.workspace === filterWorkspace);
 
+  function showFeedback(msg: string) { setFeedback(msg); setTimeout(() => setFeedback(null), 3000); }
+
   async function handleSave(task: RoadmapTask, assigneeIds?: string[]) {
     setError(null);
     try {
       if (editing === "new") {
         await createTask(task);
+        showFeedback("Task created");
       } else {
         await updateTask(task.id, task);
+        showFeedback("Task updated");
       }
-      if (assigneeIds !== undefined && userIsAdmin) {
+      if (assigneeIds !== undefined) {
         await replaceTaskAssignees(task.id, assigneeIds);
       }
       setEditing(null);
@@ -127,15 +132,47 @@ export default function TasksPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!userCanEdit) return;
-    if (!confirm(`Delete task ${id}?`)) return;
+    if (!userIsAdmin) return;
+    if (!confirm("Archive this task?")) return;
     setError(null);
     try {
-      await deleteTask(id);
+      await updateTask(id, { is_archived: true } as Partial<RoadmapTask>);
       setSelected(null);
+      showFeedback("Task archived");
       await refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Delete failed");
+      setError(err instanceof Error ? err.message : "Archive failed");
+    }
+  }
+
+  async function handleDuplicate(task: RoadmapTask) {
+    setError(null);
+    try {
+      const newId = `TASK-${Date.now().toString(36).toUpperCase()}`;
+      await createTask({ ...task, id: newId, title: `${task.title} (Copy)`, status: "Not started", is_archived: false, is_seeded: false });
+      showFeedback("Task duplicated");
+      await refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Duplicate failed");
+    }
+  }
+
+  async function handleMoveWorkspace(id: string, workspace: string) {
+    try {
+      await updateTask(id, { workspace } as Partial<RoadmapTask>);
+      showFeedback("Moved to workspace");
+      await refresh();
+    } catch {}
+  }
+
+  async function handleBulkUpdate(ids: string[], updates: Partial<RoadmapTask>) {
+    setError(null);
+    try {
+      for (const id of ids) { await updateTask(id, updates); }
+      showFeedback(`${ids.length} task(s) updated`);
+      await refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Bulk update failed");
     }
   }
 
@@ -163,7 +200,8 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {error && <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {feedback && <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{feedback}</div>}
 
       {!isSupabaseConfigured && isDev && (
         <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
@@ -220,15 +258,26 @@ export default function TasksPage() {
 
       <TaskTable
         tasks={filtered}
+        profiles={profiles}
         onSelect={setSelected}
-        onUpdate={userCanEdit ? async (id, updates) => { try { await updateTask(id, updates); await refresh(); } catch {} } : undefined}
-        onDelete={handleDelete}
+        onUpdate={userCanEdit ? async (id, updates) => { try { await updateTask(id, updates); showFeedback("Updated"); await refresh(); } catch {} } : undefined}
+        onBulkUpdate={userCanEdit ? handleBulkUpdate : undefined}
+        onDelete={userIsAdmin ? handleDelete : undefined}
+        onDuplicate={userCanEdit ? handleDuplicate : undefined}
+        onMoveWorkspace={userCanEdit ? handleMoveWorkspace : undefined}
         isAdmin={userIsAdmin}
         emptyMessage="No tasks yet. Click + Add Task to create one."
       />
 
       {selected && !editing && (
-        <TaskDetailDrawer task={selected} workstreams={workstreams} onClose={() => setSelected(null)} onEdit={userCanEdit ? (t => { setEditing(t); setSelected(null); }) : (() => {})} />
+        <TaskDetailDrawer
+          task={selected}
+          onClose={() => setSelected(null)}
+          onEdit={userCanEdit ? (t => { setEditing(t); setSelected(null); }) : (() => {})}
+          onDuplicate={userCanEdit ? (t => { handleDuplicate(t); setSelected(null); }) : undefined}
+          onDelete={userIsAdmin ? handleDelete : undefined}
+          isAdmin={userIsAdmin}
+        />
       )}
 
       {editing && userCanEdit && (
