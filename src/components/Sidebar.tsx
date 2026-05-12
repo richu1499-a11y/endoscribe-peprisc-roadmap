@@ -16,13 +16,10 @@ import { getCurrentRole, isAdmin as checkIsAdmin } from "@/lib/auth";
 interface NavItem { href: string; label: string; icon: React.ComponentType<{ className?: string }> }
 
 const NAV_MAIN: NavItem[] = [
-  { href: "/",            label: "Home",          icon: Home },
-  { href: "/tasks",       label: "Tasks",         icon: ListChecks },
-  { href: "/workspaces",  label: "Workspaces",    icon: Briefcase },
-  { href: "/network",     label: "Roadmap Map",   icon: Network },
-  { href: "/timeline",    label: "Milestones",    icon: Milestone },
-  { href: "/calendar",    label: "Calendar",      icon: CalendarDays },
-  { href: "/reports",     label: "Reports",       icon: BarChart3 },
+  { href: "/",            label: "Home",        icon: Home },
+  { href: "/workspaces",  label: "Workspaces",  icon: Briefcase },
+  { href: "/network",     label: "Roadmap",     icon: Network },
+  { href: "/calendar",    label: "Calendar",    icon: CalendarDays },
 ];
 
 const NAV_ADMIN: NavItem[] = [
