@@ -8,6 +8,7 @@ import { clsx } from "clsx";
 import {
   Home, ListChecks, Briefcase, CalendarDays, BarChart3, Settings,
   Users, Database, LayoutGrid, FileSearch, Wrench, ChevronDown, ChevronRight,
+  Network, Milestone,
 } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
 import { getCurrentRole, isAdmin as checkIsAdmin } from "@/lib/auth";
@@ -15,11 +16,13 @@ import { getCurrentRole, isAdmin as checkIsAdmin } from "@/lib/auth";
 interface NavItem { href: string; label: string; icon: React.ComponentType<{ className?: string }> }
 
 const NAV_MAIN: NavItem[] = [
-  { href: "/",            label: "Home",        icon: Home },
-  { href: "/tasks",       label: "Tasks",       icon: ListChecks },
-  { href: "/workspaces",  label: "Workspaces",  icon: Briefcase },
-  { href: "/calendar",    label: "Calendar",    icon: CalendarDays },
-  { href: "/reports",     label: "Reports",     icon: BarChart3 },
+  { href: "/",            label: "Home",          icon: Home },
+  { href: "/tasks",       label: "Tasks",         icon: ListChecks },
+  { href: "/workspaces",  label: "Workspaces",    icon: Briefcase },
+  { href: "/network",     label: "Roadmap Map",   icon: Network },
+  { href: "/timeline",    label: "Milestones",    icon: Milestone },
+  { href: "/calendar",    label: "Calendar",      icon: CalendarDays },
+  { href: "/reports",     label: "Reports",       icon: BarChart3 },
 ];
 
 const NAV_ADMIN: NavItem[] = [

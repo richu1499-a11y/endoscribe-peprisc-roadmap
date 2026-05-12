@@ -5,7 +5,6 @@ import { getTasks, getProfiles, getTaskAssignments, getTasksWithAssignees, creat
 import { getCurrentUser, getCurrentAppRole } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
 import type { TaskWithAssignees, Profile, WorkspaceGroup, RoadmapTask } from "@/lib/roadmapTypes";
-import TaskTable from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
 import { Plus, X, Settings2, ArrowLeft } from "lucide-react";
 import { clsx } from "clsx";
@@ -207,16 +206,37 @@ export default function WorkspacesPage() {
         <button className={filterCls("done")} onClick={() => setFilter("done")}>Done</button>
       </div>
 
-      <TaskTable
-        tasks={filtered}
-        profiles={profiles}
-        onSelect={t => setEditingTask(t)}
-        onUpdate={async (id, updates) => { try { await updateTask(id, updates); showFb("Updated"); await refresh(); } catch {} }}
-        onDelete={isAdmin ? async (id) => { if (confirm("Archive this task?")) { try { await updateTask(id, { is_archived: true } as Partial<RoadmapTask>); showFb("Archived"); await refresh(); } catch {} } } : undefined}
-        isAdmin={isAdmin}
-        compact
-        emptyMessage="No tasks in this workspace yet. Create one to get started."
-      />
+      {/* Task cards */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {filtered.map(t => (
+          <div key={t.id} onClick={() => setEditingTask(t)} className="rounded-xl border border-slate-200 bg-white p-4 hover:border-indigo-300 hover:shadow-sm transition-all cursor-pointer">
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="text-sm font-medium text-slate-800 line-clamp-2">{t.title}</h4>
+              {isAdmin && (
+                <button onClick={e => { e.stopPropagation(); if (confirm("Archive?")) { updateTask(t.id, { is_archived: true } as Partial<RoadmapTask>).then(() => { showFb("Archived"); refresh(); }); } }} className="text-[10px] text-slate-400 hover:text-red-500 shrink-0">Archive</button>
+              )}
+            </div>
+            {t.owner && <p className="text-[10px] text-slate-500 mt-1">Owner: {t.owner}</p>}
+            <div className="flex items-center gap-2 mt-3">
+              <select value={t.status} onClick={e => e.stopPropagation()} onChange={e => { updateTask(t.id, { status: e.target.value as RoadmapTask["status"] }); showFb("Updated"); refresh(); }} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 focus:ring-1 focus:ring-indigo-400 cursor-pointer">
+                {["Not started","In progress","Blocked","Complete","Deferred"].map(s => <option key={s}>{s}</option>)}
+              </select>
+              <select value={t.priority} onClick={e => e.stopPropagation()} onChange={e => { updateTask(t.id, { priority: e.target.value as RoadmapTask["priority"] }); showFb("Updated"); refresh(); }} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 focus:ring-1 focus:ring-indigo-400 cursor-pointer">
+                {["Critical","High","Medium","Low"].map(p => <option key={p}>{p}</option>)}
+              </select>
+              {t.target_date && <span className="text-[10px] text-slate-400">Due {t.target_date}</span>}
+            </div>
+            {t.assignees.length > 0 && <p className="text-[10px] text-slate-400 mt-2">{t.assignees.map(a => a.full_name || a.email).join(", ")}</p>}
+          </div>
+        ))}
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-12 text-center">
+          <p className="text-sm text-slate-600">No tasks in this workspace yet.</p>
+          <button onClick={() => setEditingTask("new")} className="mt-2 text-sm text-indigo-600 hover:underline">Create one to get started</button>
+        </div>
+      )}
 
       {/* Quick add */}
       {showAdd && <QuickAddModal workspace={selectedWs} onSave={handleQuickAdd} onCancel={() => setShowAdd(false)} />}
