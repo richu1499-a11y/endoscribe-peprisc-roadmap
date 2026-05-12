@@ -2,7 +2,7 @@
 
 import { getSupabaseBrowser, isSupabaseConfigured } from "./supabase/browser";
 import { MOCK_WORKSTREAMS, MOCK_TASKS, MOCK_DECISIONS, MOCK_RISKS, MOCK_MILESTONES } from "./mockData";
-import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem, DashboardRegistryItem, DashboardWidget, DashboardTaskLink, FutureModule, AdminEntityRegistryItem, AdminPageSetting, AdminAuditLog } from "./roadmapTypes";
+import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem, DashboardRegistryItem, DashboardWidget, DashboardTaskLink, FutureModule, AdminEntityRegistryItem, AdminPageSetting, AdminAuditLog, WorkspaceGroup } from "./roadmapTypes";
 
 const isDev = process.env.NODE_ENV === "development";
 let localTasks: RoadmapTask[] = isDev ? [...MOCK_TASKS] : [];
@@ -30,6 +30,51 @@ export async function getProfiles(): Promise<Profile[]> {
   const { data, error } = await sb()!.from("profiles").select("*").order("email");
   if (error) { console.error(error); return []; }
   return data as Profile[];
+}
+
+// ---------------------------------------------------------------------------
+// Workspace Groups
+// ---------------------------------------------------------------------------
+const FALLBACK_WS: WorkspaceGroup[] = [
+  { id: "ws1", slug: "endoscribe-core", title: "EndoScribe Core", description: "Ambient AI scribe, procedure documentation, speech-to-structure.", icon: "FileText", order_index: 10, is_visible: true, is_system: true },
+  { id: "ws2", slug: "peprisc", title: "PEPRisc", description: "Post-ERCP pancreatitis risk prediction and model integration.", icon: "BarChart", order_index: 20, is_visible: true, is_system: true },
+  { id: "ws3", slug: "hardware-workflow", title: "Hardware / Workflow", description: "Audio capture, microphones, procedural-room workflow.", icon: "Settings", order_index: 30, is_visible: true, is_system: true },
+  { id: "ws4", slug: "irb-fda-translation", title: "IRB, FDA & Translation", description: "IRB, FDA/CDS/SaMD, JHTV, compliance, and commercialization.", icon: "Shield", order_index: 40, is_visible: true, is_system: true },
+  { id: "ws5", slug: "research-study-trial", title: "Research Study / Prospective Trial", description: "Study design, validation cohort, outcomes, publication.", icon: "FlaskConical", order_index: 50, is_visible: true, is_system: true },
+];
+
+export async function getWorkspaceGroups(): Promise<WorkspaceGroup[]> {
+  if (!live()) return isDev ? FALLBACK_WS : [];
+  const { data, error } = await sb()!.from("workspace_groups").select("*").order("order_index");
+  if (error) { if (error.code === "42P01") return FALLBACK_WS; console.error(error); return FALLBACK_WS; }
+  return (data as WorkspaceGroup[]).length > 0 ? data as WorkspaceGroup[] : FALLBACK_WS;
+}
+
+export async function createWorkspaceGroup(ws: Partial<WorkspaceGroup>): Promise<WorkspaceGroup> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const { data, error } = await client.from("workspace_groups").insert({ ...ws, is_system: false, created_by: user?.id ?? null }).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Admin role required." : error.message);
+  await logActivity("workspace_group", data.id, "create", `Created workspace: ${ws.title}`);
+  return data as WorkspaceGroup;
+}
+
+export async function updateWorkspaceGroup(id: string, updates: Partial<WorkspaceGroup>): Promise<WorkspaceGroup> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const client = sb()!;
+  const { data: { user } } = await client.auth.getUser();
+  const { data, error } = await client.from("workspace_groups").update({ ...updates, updated_by: user?.id ?? null }).eq("id", id).select().single();
+  if (error) throw new Error(error.message.includes("policy") ? "Admin role required." : error.message);
+  await logActivity("workspace_group", id, "update", `Updated workspace: ${updates.title ?? id}`);
+  return data as WorkspaceGroup;
+}
+
+export async function deleteWorkspaceGroup(id: string): Promise<void> {
+  if (!live()) throw new Error("Supabase not configured.");
+  const { error } = await sb()!.from("workspace_groups").delete().eq("id", id);
+  if (error) throw new Error(error.message.includes("policy") ? "Admin role required." : error.message);
+  await logActivity("workspace_group", id, "delete", `Deleted workspace ${id}`);
 }
 
 // ---------------------------------------------------------------------------

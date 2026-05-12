@@ -97,6 +97,20 @@ export interface DecisionItem {
   related_task_ids: string[];
 }
 
+// ---------------------------------------------------------------------------
+// Workspace Groups
+// ---------------------------------------------------------------------------
+export interface WorkspaceGroup {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  icon: string;
+  order_index: number;
+  is_visible: boolean;
+  is_system: boolean;
+}
+
 export interface Profile {
   id: string;
   email: string;

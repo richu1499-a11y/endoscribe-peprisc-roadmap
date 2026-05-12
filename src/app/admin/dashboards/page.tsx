@@ -5,7 +5,9 @@ import {
   getDashboardRegistry, updateDashboardRegistryItem, createDashboardRegistryItem, deleteDashboardRegistryItem,
   getDashboardWidgets, createDashboardWidget, updateDashboardWidget, deleteDashboardWidget,
   getDashboardTaskLinks, linkTaskToDashboard, unlinkTaskFromDashboard, moveTaskBetweenDashboards, getTasks,
+  getWorkspaceGroups, createWorkspaceGroup, updateWorkspaceGroup, deleteWorkspaceGroup,
 } from "@/lib/roadmapStore";
+import type { WorkspaceGroup } from "@/lib/roadmapTypes";
 import { getCurrentRole, isAdmin as checkIsAdmin } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
 import type { DashboardRegistryItem, DashboardWidget, DashboardTaskLink, RoadmapTask } from "@/lib/roadmapTypes";
@@ -17,7 +19,7 @@ import { clsx } from "clsx";
 import { ShieldAlert, Plus, X, ArrowUp, ArrowDown, Eye, EyeOff, Link2, Unlink } from "lucide-react";
 import Link from "next/link";
 
-type TabKey = "dashboards" | "layout" | "workspaces";
+type TabKey = "dashboards" | "layout" | "task-links" | "workspace-groups";
 
 export default function DashboardManagerPage() {
   const [items, setItems] = useState<DashboardRegistryItem[]>([]);
@@ -37,6 +39,10 @@ export default function DashboardManagerPage() {
   const [taskLinks, setTaskLinks] = useState<DashboardTaskLink[]>([]);
   const [allTasks, setAllTasks] = useState<RoadmapTask[]>([]);
   const [taskSearch, setTaskSearch] = useState("");
+
+  // Workspace groups state
+  const [wsGroups, setWsGroups] = useState<WorkspaceGroup[]>([]);
+  const [editingWsGroup, setEditingWsGroup] = useState<WorkspaceGroup | null | "new">(null);
 
   const refresh = useCallback(async () => {
     setItems(await getDashboardRegistry());
@@ -58,6 +64,7 @@ export default function DashboardManagerPage() {
       setAuthorized(true);
       await refresh();
       setAllTasks(await getTasks());
+      setWsGroups(await getWorkspaceGroups());
     };
     init();
   }, [refresh]);
@@ -177,8 +184,9 @@ export default function DashboardManagerPage() {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-slate-200">
         <button className={tabCls("dashboards")} onClick={() => setTab("dashboards")}>Dashboards</button>
-        <button className={tabCls("layout")} onClick={() => setTab("layout")}>Layout Editor</button>
-        <button className={tabCls("workspaces")} onClick={() => setTab("workspaces")}>Task Workspaces</button>
+        <button className={tabCls("workspace-groups")} onClick={() => setTab("workspace-groups")}>Workspaces</button>
+        <button className={tabCls("layout")} onClick={() => setTab("layout")}>Layout</button>
+        <button className={tabCls("task-links")} onClick={() => setTab("task-links")}>Task Links</button>
       </div>
 
       {/* ====== TAB: Dashboards ====== */}
@@ -265,8 +273,8 @@ export default function DashboardManagerPage() {
         </div>
       )}
 
-      {/* ====== TAB: Task Workspaces ====== */}
-      {tab === "workspaces" && (
+      {/* ====== TAB: Task Links ====== */}
+      {tab === "task-links" && (
         <div className="space-y-4">
           <div className="flex items-start gap-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
             Tasks are canonical records. Linking a task to a dashboard does not duplicate it. Removing from a dashboard does NOT delete the task.
@@ -332,6 +340,59 @@ export default function DashboardManagerPage() {
             </>
           )}
           {!wsDashId && <p className="py-8 text-center text-sm text-slate-500">Select a source dashboard to manage its task links.</p>}
+        </div>
+      )}
+
+      {/* ====== TAB: Workspace Groups ====== */}
+      {tab === "workspace-groups" && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <button onClick={() => setEditingWsGroup("new")} className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"><Plus className="h-4 w-4" /> Add Workspace</button>
+          </div>
+          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+            <table className="w-full text-left">
+              <thead><tr><th className={thCls}>Order</th><th className={thCls}>Name</th><th className={thCls}>Slug</th><th className={thCls}>Description</th><th className={thCls}>Tasks</th><th className={thCls + " text-right"}>Actions</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {wsGroups.sort((a, b) => a.order_index - b.order_index).map(ws => {
+                  const taskCount = allTasks.filter(t => (t as unknown as { workspace?: string }).workspace === ws.slug).length;
+                  return (
+                    <tr key={ws.id} className="hover:bg-slate-50">
+                      <td className={tdCls + " font-mono text-slate-500"}>{ws.order_index}</td>
+                      <td className={tdCls + " font-medium text-slate-800"}>{ws.title}</td>
+                      <td className={tdCls + " font-mono text-[10px]"}>{ws.slug}</td>
+                      <td className={tdCls + " max-w-[200px] truncate"}>{ws.description ?? "--"}</td>
+                      <td className={tdCls}>{taskCount}</td>
+                      <td className={tdCls + " text-right whitespace-nowrap"}>
+                        <button onClick={() => setEditingWsGroup(ws)} className="mr-2 text-xs text-indigo-600 hover:underline">Edit</button>
+                        {!ws.is_system && <button onClick={async () => { if (confirm(`Delete workspace "${ws.title}"?`)) { try { await deleteWorkspaceGroup(ws.id); setWsGroups(await getWorkspaceGroups()); } catch (e: unknown) { setError(e instanceof Error ? e.message : "Failed"); } } }} className="text-xs text-red-500 hover:underline">Delete</button>}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {wsGroups.length === 0 && <tr><td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">No workspaces. Click Add Workspace.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Workspace group edit modal */}
+      {editingWsGroup && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-20">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+            <WsGroupForm ws={editingWsGroup === "new" ? null : editingWsGroup} onSave={async (form) => {
+              try {
+                if (editingWsGroup === "new") {
+                  const slug = (form.title ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+                  await createWorkspaceGroup({ ...form, slug, order_index: (wsGroups.length + 1) * 10 });
+                } else if (editingWsGroup) {
+                  await updateWorkspaceGroup(editingWsGroup.id, form);
+                }
+                setEditingWsGroup(null);
+                setWsGroups(await getWorkspaceGroups());
+              } catch (e: unknown) { setError(e instanceof Error ? e.message : "Failed"); }
+            }} onCancel={() => setEditingWsGroup(null)} />
+          </div>
         </div>
       )}
 
@@ -408,6 +469,23 @@ function WidgetForm({ widget, onSave, onCancel }: { widget: DashboardWidget | nu
       <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer"><input type="checkbox" checked={form.is_visible ?? true} onChange={e => set("is_visible", e.target.checked)} className="rounded" /> Visible</label>
       <div><label className={l}>Description</label><textarea className={c + " h-14"} value={form.description ?? ""} onChange={e => set("description", e.target.value)} /></div>
       <div className="flex justify-end gap-3"><button type="button" onClick={onCancel} className="rounded border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancel</button><button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">{isNew ? "Create" : "Save"}</button></div>
+    </form>
+  );
+}
+
+function WsGroupForm({ ws, onSave, onCancel }: { ws: WorkspaceGroup | null; onSave: (f: Partial<WorkspaceGroup>) => void; onCancel: () => void }) {
+  const isNew = !ws;
+  const [title, setTitle] = useState(ws?.title ?? "");
+  const [description, setDescription] = useState(ws?.description ?? "");
+  const [orderIndex, setOrderIndex] = useState(ws?.order_index ?? 100);
+  const c = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none";
+  return (
+    <form onSubmit={e => { e.preventDefault(); onSave({ title, description, order_index: orderIndex }); }} className="space-y-3">
+      <div className="flex justify-between"><h3 className="text-lg font-semibold text-slate-800">{isNew ? "Add Workspace" : `Edit: ${ws?.title}`}</h3><button type="button" onClick={onCancel}><X className="h-4 w-4" /></button></div>
+      <div><label className="block text-xs font-medium text-slate-600 mb-1">Name *</label><input className={c} value={title} onChange={e => setTitle(e.target.value)} required autoFocus /></div>
+      <div><label className="block text-xs font-medium text-slate-600 mb-1">Description</label><textarea className={c + " h-16"} value={description} onChange={e => setDescription(e.target.value)} /></div>
+      <div><label className="block text-xs font-medium text-slate-600 mb-1">Order</label><input type="number" className={c + " w-24"} value={orderIndex} onChange={e => setOrderIndex(parseInt(e.target.value) || 100)} /></div>
+      <div className="flex justify-end gap-3"><button type="button" onClick={onCancel} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600">Cancel</button><button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white">{isNew ? "Create" : "Save"}</button></div>
     </form>
   );
 }
