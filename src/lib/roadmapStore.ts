@@ -90,9 +90,11 @@ export async function getWorkstreams(): Promise<Workstream[]> {
 // ---------------------------------------------------------------------------
 // Tasks — CRUD
 // ---------------------------------------------------------------------------
-export async function getTasks(): Promise<RoadmapTask[]> {
-  if (!live()) return localTasks;
-  const { data, error } = await sb()!.from("tasks").select("*").order("id");
+export async function getTasks(includeArchived = false): Promise<RoadmapTask[]> {
+  if (!live()) return includeArchived ? localTasks : localTasks.filter(t => !t.is_archived);
+  let q = sb()!.from("tasks").select("*").order("id");
+  if (!includeArchived) q = q.or("is_archived.is.null,is_archived.eq.false");
+  const { data, error } = await q;
   if (error) { console.error(error); return localTasks; }
   return data as RoadmapTask[];
 }

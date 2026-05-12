@@ -24,7 +24,7 @@ export default function HomePage() {
     (async () => {
       const [rawTasks, profs, assigns] = await Promise.all([getTasks(), getProfiles(), getTaskAssignments()]);
       const enriched = await getTasksWithAssignees(rawTasks, assigns, profs);
-      setTasks(enriched.filter(t => !t.is_archived));
+      setTasks(enriched);
       if (isSupabaseConfigured) {
         const user = await getCurrentUser();
         setCurrentUserId(user?.id ?? null);

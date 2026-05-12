@@ -29,7 +29,7 @@ export default function WorkspacesPage() {
   const refresh = useCallback(async () => {
     const [rawTasks, profs, assigns, ws] = await Promise.all([getTasks(), getProfiles(), getTaskAssignments(), getWorkspaceGroups()]);
     const enriched = await getTasksWithAssignees(rawTasks, assigns, profs);
-    setTasks(enriched.filter(t => !t.is_archived));
+    setTasks(enriched);
     setProfiles(profs);
     setWorkspaces(ws.filter(w => w.is_visible));
     if (isSupabaseConfigured) {
