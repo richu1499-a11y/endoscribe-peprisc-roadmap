@@ -24,7 +24,7 @@ const PHI_FLOW_ROWS = [
   { asset: "PEPRisc output (risk score)", phi: "Derived", type: "Score", approved: "TBD", risk: "Moderate" },
   { asset: "Validation database", phi: "Yes", type: "Research DB", approved: "TBD", risk: "High" },
   { asset: "Exported metadata/reports", phi: "De-ID only", type: "Reports", approved: "Depends", risk: "Moderate" },
-  { asset: "Dashboard roadmap metadata", phi: "No", type: "Planning", approved: "Yes (this app)", risk: "Low" },
+  { asset: "App workspace data", phi: "No", type: "Planning", approved: "Yes (this app)", risk: "Low" },
 ];
 
 const GUARDRAIL_ROWS = [
@@ -90,7 +90,7 @@ export default function GovernancePage() {
   const warnings = useMemo(() => {
     const w: { id: string; msg: string }[] = [];
     for (const i of items) {
-      if (i.phi_involved && i.hipaa_risk === "Unknown") w.push({ id: i.title, msg: "PHI involved but HIPAA risk is Unknown" });
+      if (i.phi_involved && i.hipaa_risk === "Unknown") w.push({ id: i.title, msg: "PHI involved but compliance risk is Unknown" });
       if (i.phi_involved && !i.data_location) w.push({ id: i.title, msg: "PHI involved but no storage location defined" });
       if (i.phi_involved && !i.compute_location && (i.category === "Secure Compute" || i.category === "AI Transcription")) w.push({ id: i.title, msg: "PHI involved but no compute location defined" });
       if ((i.irb_status === "Not assessed" || i.irb_status === "Amendment likely needed") && !i.owner) w.push({ id: i.title, msg: "Needs IRB decision but no owner" });
@@ -100,8 +100,8 @@ export default function GovernancePage() {
       if (!i.next_action) w.push({ id: i.title, msg: "No next_action defined" });
     }
     for (const t of tasks) {
-      if (t.hipaa_relevance === "High" && !t.notes) w.push({ id: t.id, msg: "High HIPAA task without notes" });
-      if (t.hipaa_relevance === "High" && !t.decision_needed) w.push({ id: t.id, msg: "High HIPAA task without decision_needed" });
+      if (t.hipaa_relevance === "High" && !t.notes) w.push({ id: t.id, msg: "High compliance task without notes" });
+      if (t.hipaa_relevance === "High" && !t.decision_needed) w.push({ id: t.id, msg: "High compliance task without decision_needed" });
     }
     return w;
   }, [items, tasks, today]);
@@ -151,7 +151,7 @@ export default function GovernancePage() {
       {/* Metrics */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
         <MetricCard label="Total Items" value={items.length} />
-        <MetricCard label="High HIPAA" value={highHipaa.length} accent={highHipaa.length > 0 ? "red" : "default"} />
+        <MetricCard label="High Risk" value={highHipaa.length} accent={highHipaa.length > 0 ? "red" : "default"} />
         <MetricCard label="PHI Involved" value={phiItems.length} accent={phiItems.length > 0 ? "amber" : "default"} />
         <MetricCard label="IRB Decision" value={needsIrb.length} accent={needsIrb.length > 0 ? "amber" : "default"} />
         <MetricCard label="IT Review" value={needsIt.length} />
@@ -176,7 +176,7 @@ export default function GovernancePage() {
           <table className="w-full text-left">
             <thead><tr>
               <th className={thCls}>Title</th><th className={thCls}>Category</th><th className={thCls}>PHI</th>
-              <th className={thCls}>HIPAA</th><th className={thCls}>IRB</th><th className={thCls}>IT</th>
+              <th className={thCls}>Compliance</th><th className={thCls}>IRB</th><th className={thCls}>IT</th>
               <th className={thCls}>Status</th><th className={thCls}>Next Action</th>
               {userCanEdit && <th className={thCls + " text-right"}>Actions</th>}
             </tr></thead>
@@ -211,7 +211,7 @@ export default function GovernancePage() {
         <p className="text-xs text-slate-500 mb-2">Map of data assets, PHI status, and governance requirements. All PHI must remain in Hopkins-approved environments.</p>
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
           <table className="w-full text-left">
-            <thead><tr><th className={thCls}>Data Asset</th><th className={thCls}>PHI?</th><th className={thCls}>Type</th><th className={thCls}>Approved Env</th><th className={thCls}>HIPAA Risk</th></tr></thead>
+            <thead><tr><th className={thCls}>Data Asset</th><th className={thCls}>PHI?</th><th className={thCls}>Type</th><th className={thCls}>Approved Env</th><th className={thCls}>Compliance Risk</th></tr></thead>
             <tbody className="divide-y divide-slate-100">
               {PHI_FLOW_ROWS.map((r, i) => (
                 <tr key={i}><td className={tdCls + " font-medium"}>{r.asset}</td>
@@ -243,13 +243,13 @@ export default function GovernancePage() {
         </div>
       </section>
 
-      {/* Linked HIPAA tasks */}
+      {/* Linked compliance tasks */}
       {hipaaTasks.length > 0 && (
         <section>
-          <h2 className={headCls}>Linked Roadmap Tasks (HIPAA / IRB / Infrastructure)</h2>
+          <h2 className={headCls}>Linked Compliance Tasks</h2>
           <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
             <table className="w-full text-left">
-              <thead><tr><th className={thCls}>ID</th><th className={thCls}>Title</th><th className={thCls}>HIPAA</th><th className={thCls}>Status</th><th className={thCls}>Priority</th><th className={thCls}>Target</th><th className={thCls}>Next Action</th></tr></thead>
+              <thead><tr><th className={thCls}>ID</th><th className={thCls}>Title</th><th className={thCls}>Compliance</th><th className={thCls}>Status</th><th className={thCls}>Priority</th><th className={thCls}>Target</th><th className={thCls}>Next Action</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {hipaaTasks.slice(0, 30).map(t => (
                   <tr key={t.id}><td className={tdCls + " font-mono"}>{t.id}</td>
@@ -299,7 +299,7 @@ export default function GovernancePage() {
             <div className="flex gap-2"><StatusBadge status={selectedItem.status} /><PriorityBadge priority={selectedItem.priority} /></div>
             <p className="text-sm text-slate-600">{selectedItem.description}</p>
             <Df label="PHI Involved">{selectedItem.phi_involved ? "Yes" : "No"}</Df>
-            <Df label="HIPAA Risk"><span className={clsx("rounded px-1.5 py-0.5 text-xs font-medium", riskBadge[selectedItem.hipaa_risk] ?? riskBadge.Unknown)}>{selectedItem.hipaa_risk}</span></Df>
+            <Df label="Compliance Risk"><span className={clsx("rounded px-1.5 py-0.5 text-xs font-medium", riskBadge[selectedItem.hipaa_risk] ?? riskBadge.Unknown)}>{selectedItem.hipaa_risk}</span></Df>
             <Df label="IRB Status">{selectedItem.irb_status}</Df>
             <Df label="Hopkins IT Status">{selectedItem.hopkins_it_status}</Df>
             <Df label="Data Type">{selectedItem.data_type}</Df>

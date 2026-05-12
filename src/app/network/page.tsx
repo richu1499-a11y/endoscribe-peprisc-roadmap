@@ -353,7 +353,7 @@ export default function NetworkPage() {
                 <DField label="Blockers">{selectedTask.blockers?.join(", ")}</DField>
                 <DField label="Decision Needed">{selectedTask.decision_needed}</DField>
                 <DField label="FDA">{selectedTask.regulatory_relevance}</DField>
-                <DField label="HIPAA">{selectedTask.hipaa_relevance}</DField>
+                <DField label="Compliance">{selectedTask.hipaa_relevance}</DField>
                 <DField label="Evidence Stage">{selectedTask.evidence_stage}</DField>
                 <DField label="GSD Goal">{selectedTask.gsd_goal}</DField>
                 <DField label="Notes">{selectedTask.notes}</DField>
@@ -372,7 +372,7 @@ export default function NetworkPage() {
                   <DField label="Blocked">{wsTasks.filter(t => t.status === "Blocked").length}</DField>
                   <DField label="Unassigned">{wsTasks.filter(t => t.assignees.length === 0).length}</DField>
                   <DField label="High FDA">{wsTasks.filter(t => t.regulatory_relevance === "High").length}</DField>
-                  <DField label="High HIPAA">{wsTasks.filter(t => t.hipaa_relevance === "High").length}</DField>
+                  <DField label="High Compliance">{wsTasks.filter(t => t.hipaa_relevance === "High").length}</DField>
                 </div>
               );
             })()}

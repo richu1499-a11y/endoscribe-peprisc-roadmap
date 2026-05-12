@@ -18,8 +18,9 @@ const config: CapacitorConfig = {
   // Create a minimal placeholder if cap sync complains.
   webDir: "public",
   server: {
-    // Production Vercel URL -- the native shell loads this in a WebView
-    url: "https://endoscribe-peprisc-roadmap.vercel.app",
+    // Production Vercel URL. If you rename the Vercel project, update this
+    // and set NEXT_PUBLIC_APP_URL in Vercel env vars + update Supabase Auth URLs.
+    url: process.env.NEXT_PUBLIC_APP_URL || "https://endoscribe-peprisc-roadmap.vercel.app",
     cleartext: false,
   },
   android: {

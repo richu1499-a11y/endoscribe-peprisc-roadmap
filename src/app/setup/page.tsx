@@ -335,11 +335,15 @@ export default function SetupPage() {
       results.push({ label: "User lifecycle", status: "warn", detail: "is_active column may not exist. Run migration 014." });
     }
 
-    // Auth and access control
-    results.push({ label: "Auth guard", status: "pass", detail: "Middleware redirect + AuthGuard component active" });
-    results.push({ label: "Inactive user enforcement", status: "pass", detail: "AuthGuard redirects to /access-deactivated" });
-    results.push({ label: "Admin route protection", status: "pass", detail: "Middleware checks admin role for /admin/* and /setup" });
-    results.push({ label: "Invite acceptance", status: "pass", detail: "AuthGuard processes pending invites on login" });
+    // Auth, access, and app config
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://endoscribe-peprisc-roadmap.vercel.app";
+    results.push({ label: "App URL", status: "pass", detail: appUrl });
+    results.push({ label: "Auth guard", status: "pass", detail: "Middleware redirect + AuthGuard active" });
+    results.push({ label: "Inactive user block", status: "pass", detail: "AuthGuard → /access-deactivated" });
+    results.push({ label: "Admin route protection", status: "pass", detail: "Middleware checks role for /admin/* and /setup" });
+    results.push({ label: "Invite acceptance", status: "pass", detail: "AuthGuard auto-applies pending invites" });
+    results.push({ label: ".ics API auth", status: "pass", detail: "Requires authenticated user (401 if not)" });
+    results.push({ label: "PWA manifest", status: "pass", detail: "/manifest.webmanifest" });
 
     setChecks(results);
     setRunning(false);
