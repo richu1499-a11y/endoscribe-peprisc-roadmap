@@ -317,6 +317,24 @@ export default function SetupPage() {
       results.push({ label: "App roles", status: "warn", detail: "app_role column may not exist. Run migration 012." });
     }
 
+    // User invites
+    try {
+      const { count: invCount, error: invErr } = await sb.from("user_invites").select("id", { count: "exact", head: true });
+      if (invErr) throw invErr;
+      results.push({ label: "user_invites table", status: "pass", detail: `${invCount ?? 0} invite(s)` });
+    } catch {
+      results.push({ label: "user_invites table", status: "warn", detail: "Table not found. Run supabase/migrations/014_product_ui_user_lifecycle.sql" });
+    }
+
+    // User lifecycle fields
+    try {
+      const { data: activeData } = await sb.from("profiles").select("id").eq("is_active", true);
+      const { data: inactiveData } = await sb.from("profiles").select("id").eq("is_active", false);
+      results.push({ label: "User lifecycle", status: "pass", detail: `${activeData?.length ?? 0} active, ${inactiveData?.length ?? 0} deactivated` });
+    } catch {
+      results.push({ label: "User lifecycle", status: "warn", detail: "is_active column may not exist. Run migration 014." });
+    }
+
     setChecks(results);
     setRunning(false);
   }

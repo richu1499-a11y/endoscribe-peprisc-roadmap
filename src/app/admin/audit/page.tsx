@@ -98,7 +98,7 @@ export default function AuditLogPage() {
                 <td className={tdCls + " font-mono text-[10px] max-w-[100px] truncate"}>{l.entity_id ?? "--"}</td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">No audit entries. Admin actions will appear here.</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={6} className="px-4 py-12 text-center"><p className="text-sm text-slate-500">No activity recorded yet.</p><p className="text-xs text-slate-400 mt-1">Administrative changes such as role updates, invites, and configuration edits will appear here.</p></td></tr>}
           </tbody>
         </table>
       </div>

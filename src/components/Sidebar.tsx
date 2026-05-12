@@ -23,12 +23,12 @@ const NAV_MAIN: NavItem[] = [
 ];
 
 const NAV_ADMIN: NavItem[] = [
-  { href: "/admin/users",      label: "Users",          icon: Users },
-  { href: "/admin/data",       label: "Data Manager",   icon: Database },
-  { href: "/admin/dashboards", label: "Workspaces",     icon: LayoutGrid },
-  { href: "/admin/audit",      label: "Audit Log",      icon: FileSearch },
-  { href: "/setup",            label: "Setup",          icon: Wrench },
-  { href: "/settings",         label: "Settings",       icon: Settings },
+  { href: "/admin/users",      label: "Users",              icon: Users },
+  { href: "/admin/data",       label: "Data Manager",       icon: Database },
+  { href: "/admin/dashboards", label: "Workspace Manager",  icon: LayoutGrid },
+  { href: "/admin/audit",      label: "Audit Log",          icon: FileSearch },
+  { href: "/settings",         label: "Settings",           icon: Settings },
+  { href: "/setup",            label: "Setup",              icon: Wrench },
 ];
 
 export default function Sidebar() {

@@ -1,16 +1,20 @@
 "use client";
 
-import { ShieldAlert } from "lucide-react";
+import { Info } from "lucide-react";
 
-export default function ComplianceBanner() {
-  return (
-    <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-      <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-      <p>
-        <strong>Roadmap metadata only.</strong> Do not enter PHI, patient audio,
-        transcripts, notes, MRNs, DOBs, accession numbers, or patient
-        identifiers.
+export default function ComplianceBanner({ compact }: { compact?: boolean }) {
+  if (compact) {
+    return (
+      <p className="text-[10px] text-slate-400">
+        Internal workspace only. Do not upload patient identifiers or confidential clinical data.
       </p>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+      <p>Internal workspace only. Do not upload patient identifiers, procedure notes, raw transcripts, or confidential clinical data.</p>
     </div>
   );
 }

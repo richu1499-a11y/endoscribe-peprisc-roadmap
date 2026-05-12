@@ -678,6 +678,22 @@ create policy "Authenticated can read meetings" on meetings for select to authen
 create policy "Editors can manage meetings" on meetings for all to authenticated using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role in ('admin','editor')));
 
 -- ============================================================
+-- user_invites
+-- ============================================================
+create table if not exists user_invites (
+  id uuid primary key default gen_random_uuid(), email text not null,
+  app_role text not null default 'user', status text not null default 'pending',
+  invited_by uuid references public.profiles(id), accepted_by uuid references public.profiles(id),
+  invited_at timestamptz not null default now(), accepted_at timestamptz,
+  expires_at timestamptz, notes text,
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+);
+create trigger user_invites_updated_at before update on user_invites for each row execute function set_updated_at();
+alter table user_invites enable row level security;
+create policy "Admins can manage user_invites" on user_invites for all to authenticated
+  using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'));
+
+-- ============================================================
 -- Enable Supabase Realtime for tasks table
 -- ============================================================
 -- Run in Supabase Dashboard > Database > Replication, or:
