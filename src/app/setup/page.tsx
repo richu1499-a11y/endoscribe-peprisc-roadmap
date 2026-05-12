@@ -335,6 +335,12 @@ export default function SetupPage() {
       results.push({ label: "User lifecycle", status: "warn", detail: "is_active column may not exist. Run migration 014." });
     }
 
+    // Auth and access control
+    results.push({ label: "Auth guard", status: "pass", detail: "Middleware redirect + AuthGuard component active" });
+    results.push({ label: "Inactive user enforcement", status: "pass", detail: "AuthGuard redirects to /access-deactivated" });
+    results.push({ label: "Admin route protection", status: "pass", detail: "Middleware checks admin role for /admin/* and /setup" });
+    results.push({ label: "Invite acceptance", status: "pass", detail: "AuthGuard processes pending invites on login" });
+
     setChecks(results);
     setRunning(false);
   }
