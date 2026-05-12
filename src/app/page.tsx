@@ -9,6 +9,7 @@ import Image from "next/image";
 import Link from "next/link";
 import StatusBadge from "@/components/StatusBadge";
 import PriorityBadge from "@/components/PriorityBadge";
+import MetricCard from "@/components/MetricCard";
 import { Plus, CalendarDays, Briefcase, ListChecks, Network } from "lucide-react";
 
 interface Meeting { id: string; title: string; start_time: string | null }
@@ -41,61 +42,69 @@ export default function HomePage() {
   const today = useMemo(() => now.toISOString().slice(0, 10), [now]);
 
   const myTasks = currentUserId ? tasks.filter(t => t.assignees.some(a => a.id === currentUserId)) : [];
+  const myOpen = myTasks.filter(t => t.status !== "Complete" && t.status !== "Deferred");
   const myDueSoon = myTasks.filter(t => t.target_date && t.target_date >= today && t.status !== "Complete").sort((a, b) => (a.target_date ?? "").localeCompare(b.target_date ?? "")).slice(0, 5);
   const myOverdue = myTasks.filter(t => t.target_date && t.target_date < today && t.status !== "Complete");
+  const totalActive = tasks.filter(t => t.status !== "Complete" && t.status !== "Deferred").length;
+  const totalBlocked = tasks.filter(t => t.status === "Blocked").length;
+  const totalCritical = tasks.filter(t => t.priority === "Critical" || t.priority === "High").length;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-8">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Image src="/endoscribe-mark.svg" alt="" width={32} height={32} />
+      <div className="flex items-center gap-4">
+        <Image src="/endoscribe-mark.svg" alt="" width={44} height={44} />
         <div>
-          <h1 className="text-xl font-bold text-[#1e3a5f]">Welcome back</h1>
-          <p className="text-xs text-slate-500">EndoScribe Workspace OS</p>
+          <h1 className="text-2xl font-bold text-[#1e3a5f]">Welcome back</h1>
+          <p className="text-sm text-slate-500">EndoScribe Workspace OS</p>
         </div>
       </div>
 
       {!isSupabaseConfigured && isDev && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">Demo mode. <Link href="/setup" className="underline">Configure</Link></div>
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm text-blue-800">Demo mode. <Link href="/setup" className="underline">Configure</Link></div>
       )}
       {!isSupabaseConfigured && !isDev && (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800"><strong>Setup required.</strong> <Link href="/setup" className="underline">View setup</Link></div>
+        <div className="rounded-xl border border-red-300 bg-red-50 px-5 py-4 text-sm text-red-800"><strong>Setup required.</strong> <Link href="/setup" className="underline">View setup</Link></div>
       )}
 
-      {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-        <Link href="/tasks" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 hover:border-indigo-300 hover:shadow-md transition-all">
-          <Plus className="h-5 w-5 text-indigo-600" />
-          <span className="text-sm font-semibold text-slate-800">New Task</span>
-        </Link>
-        <Link href="/calendar" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 hover:border-indigo-300 hover:shadow-md transition-all">
-          <CalendarDays className="h-5 w-5 text-indigo-600" />
-          <span className="text-sm font-semibold text-slate-800">New Meeting</span>
-        </Link>
-        <Link href="/workspaces" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 hover:border-indigo-300 hover:shadow-md transition-all">
-          <Briefcase className="h-5 w-5 text-indigo-600" />
-          <span className="text-sm font-semibold text-slate-800">Workspaces</span>
-        </Link>
-        <Link href="/tasks" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 hover:border-indigo-300 hover:shadow-md transition-all">
-          <ListChecks className="h-5 w-5 text-indigo-600" />
-          <span className="text-sm font-semibold text-slate-800">All Tasks</span>
-        </Link>
-        <Link href="/network" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 hover:border-indigo-300 hover:shadow-md transition-all">
-          <Network className="h-5 w-5 text-indigo-600" />
-          <span className="text-sm font-semibold text-slate-800">Roadmap Map</span>
-        </Link>
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <MetricCard label="Active Tasks" value={totalActive} accent="blue" />
+        <MetricCard label="My Open" value={myOpen.length} />
+        <MetricCard label="High Priority" value={totalCritical} accent={totalCritical > 0 ? "amber" : "default"} />
+        <MetricCard label="Blocked" value={totalBlocked} accent={totalBlocked > 0 ? "red" : "default"} />
       </div>
+
+      {/* Quick actions */}
+      <section>
+        <h2 className="text-lg font-bold text-slate-900 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+          {[
+            { href: "/tasks", icon: Plus, label: "New Task" },
+            { href: "/calendar", icon: CalendarDays, label: "New Meeting" },
+            { href: "/workspaces", icon: Briefcase, label: "Workspaces" },
+            { href: "/tasks", icon: ListChecks, label: "All Tasks" },
+            { href: "/network", icon: Network, label: "Roadmap Map" },
+          ].map(a => (
+            <Link key={a.label} href={a.href} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-5 hover:border-indigo-300 hover:shadow-lg transition-all">
+              <a.icon className="h-6 w-6 text-indigo-600" />
+              <span className="text-base font-semibold text-slate-800">{a.label}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* Overdue */}
       {myOverdue.length > 0 && (
         <section>
-          <h2 className="text-base font-bold text-red-700 mb-3">Overdue ({myOverdue.length})</h2>
-          <div className="space-y-2">
+          <h2 className="text-lg font-bold text-red-700 mb-4">Overdue ({myOverdue.length})</h2>
+          <div className="space-y-3">
             {myOverdue.slice(0, 5).map(t => (
-              <Link key={t.id} href="/tasks" className="flex items-center justify-between rounded-xl border border-red-200 border-l-4 border-l-red-500 bg-red-50/30 px-5 py-4 hover:shadow-md transition-all">
-                <div className="min-w-0 flex-1 mr-3">
-                  <p className="text-sm font-semibold text-slate-900">{t.title}</p>
-                  <p className="text-xs text-red-600 mt-0.5 font-medium">Due {t.target_date}</p>
+              <Link key={t.id} href="/tasks" className="flex items-center justify-between rounded-xl border border-red-200 border-l-4 border-l-red-500 bg-red-50/40 px-6 py-5 hover:shadow-lg transition-all">
+                <div className="min-w-0 flex-1 mr-4">
+                  <p className="text-base font-semibold text-slate-900">{t.title}</p>
+                  <p className="text-sm text-red-600 mt-1 font-medium">Due {t.target_date}</p>
+                  {t.owner && <p className="text-sm text-slate-500">Owner: {t.owner}</p>}
                 </div>
                 <PriorityBadge priority={t.priority} />
               </Link>
@@ -107,13 +116,14 @@ export default function HomePage() {
       {/* Due soon */}
       {myDueSoon.length > 0 && (
         <section>
-          <h2 className="text-base font-bold text-slate-800 mb-3">Due soon</h2>
-          <div className="space-y-2">
+          <h2 className="text-lg font-bold text-slate-900 mb-4">Due Soon</h2>
+          <div className="space-y-3">
             {myDueSoon.map(t => (
-              <Link key={t.id} href="/tasks" className="flex items-center justify-between rounded-xl border border-slate-200 border-l-4 border-l-blue-400 bg-white px-5 py-4 hover:shadow-md transition-all">
-                <div className="min-w-0 flex-1 mr-3">
-                  <p className="text-sm font-semibold text-slate-900">{t.title}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Due {t.target_date}</p>
+              <Link key={t.id} href="/tasks" className="flex items-center justify-between rounded-xl border border-slate-200 border-l-4 border-l-blue-500 bg-white px-6 py-5 hover:shadow-lg transition-all">
+                <div className="min-w-0 flex-1 mr-4">
+                  <p className="text-base font-semibold text-slate-900">{t.title}</p>
+                  <p className="text-sm text-slate-500 mt-1">Due {t.target_date}</p>
+                  {t.owner && <p className="text-sm text-slate-500">Owner: {t.owner}</p>}
                 </div>
                 <div className="flex gap-2"><StatusBadge status={t.status} /><PriorityBadge priority={t.priority} /></div>
               </Link>
@@ -122,22 +132,23 @@ export default function HomePage() {
         </section>
       )}
 
+      {/* No tasks */}
       {currentUserId && myTasks.length === 0 && (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
-          <p className="text-sm text-slate-600">No tasks assigned to you yet.</p>
-          <Link href="/workspaces" className="mt-2 inline-block text-sm text-indigo-600 hover:underline">Open a workspace to get started</Link>
+        <div className="rounded-xl border-2 border-dashed border-slate-300 bg-white p-16 text-center">
+          <p className="text-lg text-slate-600">No tasks assigned to you yet.</p>
+          <Link href="/workspaces" className="mt-3 inline-block text-base text-indigo-600 hover:underline font-medium">Open a workspace to get started</Link>
         </div>
       )}
 
       {/* Upcoming meetings */}
       {meetings.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-slate-800 mb-2">Upcoming meetings</h2>
-          <div className="rounded-lg border border-slate-200 bg-white divide-y divide-slate-100">
+          <h2 className="text-lg font-bold text-slate-900 mb-4">Upcoming Meetings</h2>
+          <div className="space-y-3">
             {meetings.map(m => (
-              <Link key={m.id} href="/calendar" className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50">
-                <p className="text-sm text-slate-800">{m.title}</p>
-                <p className="text-xs text-slate-500">{m.start_time ? new Date(m.start_time).toLocaleDateString() : "No date"}</p>
+              <Link key={m.id} href="/calendar" className="flex items-center justify-between rounded-xl border border-slate-200 border-l-4 border-l-indigo-500 bg-white px-6 py-5 hover:shadow-lg transition-all">
+                <p className="text-base font-semibold text-slate-900">{m.title}</p>
+                <p className="text-sm text-slate-500">{m.start_time ? new Date(m.start_time).toLocaleDateString() : "No date"}</p>
               </Link>
             ))}
           </div>
