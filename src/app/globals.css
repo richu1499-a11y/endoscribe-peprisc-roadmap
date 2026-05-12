@@ -16,4 +16,11 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
 }
+
+/* Slightly larger base for readability */
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.2rem; }
+h3 { font-size: 1.05rem; }

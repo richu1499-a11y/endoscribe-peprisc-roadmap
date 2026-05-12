@@ -104,7 +104,7 @@ export default function WorkspacesPage() {
     } catch (err: unknown) { setError(err instanceof Error ? err.message : "Failed"); }
   }
 
-  const filterCls = (f: string) => clsx("px-3 py-1 text-xs rounded-full transition-colors", filter === f ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200");
+  const filterCls = (f: string) => clsx("px-4 py-1.5 text-sm rounded-full font-medium transition-colors", filter === f ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200");
 
   // ========== Workspace cards view ==========
   if (!selectedWs) {
@@ -132,17 +132,17 @@ export default function WorkspacesPage() {
         {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
         {feedback && <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{feedback}</div>}
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           {workspaces.map(ws => {
             const count = tasks.filter(t => t.workspace === ws.slug).length;
             const overdue = tasks.filter(t => t.workspace === ws.slug && t.target_date && t.target_date < now && t.status !== "Complete").length;
             const myCount = currentUserId ? tasks.filter(t => t.workspace === ws.slug && t.assignees.some(a => a.id === currentUserId)).length : 0;
             return (
-              <div key={ws.slug} className="rounded-lg border border-slate-200 bg-white p-5 hover:border-indigo-300 hover:shadow-sm transition-all">
+              <div key={ws.slug} className="rounded-xl border border-slate-200 bg-white p-6 hover:border-indigo-300 hover:shadow-md transition-all">
                 <div className="flex justify-between items-start">
                   <button onClick={() => setSelectedWs(ws.slug)} className="text-left flex-1">
-                    <h3 className="text-sm font-semibold text-slate-800">{ws.title}</h3>
-                    <p className="mt-1 text-xs text-slate-500 line-clamp-2">{ws.description}</p>
+                    <h3 className="text-base font-bold text-slate-900">{ws.title}</h3>
+                    <p className="mt-1.5 text-sm text-slate-500 line-clamp-2">{ws.description}</p>
                   </button>
                   {showManage && isAdmin && (
                     <div className="flex gap-1 ml-2 shrink-0">
@@ -152,8 +152,8 @@ export default function WorkspacesPage() {
                   )}
                 </div>
                 <button onClick={() => setSelectedWs(ws.slug)} className="w-full text-left">
-                  <div className="mt-3 flex gap-3 text-xs">
-                    <span className="text-slate-600">{count} task{count !== 1 ? "s" : ""}</span>
+                  <div className="mt-4 flex gap-4 text-sm font-medium">
+                    <span className="text-slate-700">{count} task{count !== 1 ? "s" : ""}</span>
                     {myCount > 0 && <span className="text-indigo-600">{myCount} mine</span>}
                     {overdue > 0 && <span className="text-red-600">{overdue} overdue</span>}
                   </div>
@@ -207,34 +207,38 @@ export default function WorkspacesPage() {
       </div>
 
       {/* Task cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map(t => (
-          <div key={t.id} onClick={() => setEditingTask(t)} className="rounded-xl border border-slate-200 bg-white p-4 hover:border-indigo-300 hover:shadow-sm transition-all cursor-pointer">
-            <div className="flex items-start justify-between gap-2">
-              <h4 className="text-sm font-medium text-slate-800 line-clamp-2">{t.title}</h4>
-              {isAdmin && (
-                <button onClick={e => { e.stopPropagation(); if (confirm("Archive?")) { updateTask(t.id, { is_archived: true } as Partial<RoadmapTask>).then(() => { showFb("Archived"); refresh(); }); } }} className="text-[10px] text-slate-400 hover:text-red-500 shrink-0">Archive</button>
-              )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {filtered.map(t => {
+          const borderColor = t.priority === "Critical" ? "border-l-red-500" : t.priority === "High" ? "border-l-amber-500" : t.status === "Blocked" ? "border-l-red-400" : t.status === "Complete" ? "border-l-green-500" : t.status === "In progress" ? "border-l-blue-500" : "border-l-slate-300";
+          const bgColor = t.priority === "Critical" ? "bg-red-50/40" : t.status === "Blocked" ? "bg-red-50/30" : t.status === "Complete" ? "bg-green-50/30" : "bg-white";
+          return (
+            <div key={t.id} onClick={() => setEditingTask(t)} className={clsx("rounded-xl border border-slate-200 border-l-4 p-5 hover:shadow-md transition-all cursor-pointer", borderColor, bgColor)}>
+              <div className="flex items-start justify-between gap-3">
+                <h4 className="text-base font-semibold text-slate-900 leading-snug">{t.title}</h4>
+                {isAdmin && (
+                  <button onClick={e => { e.stopPropagation(); if (confirm("Archive?")) { updateTask(t.id, { is_archived: true } as Partial<RoadmapTask>).then(() => { showFb("Archived"); refresh(); }); } }} className="text-xs text-slate-400 hover:text-red-500 shrink-0 mt-0.5">Archive</button>
+                )}
+              </div>
+              {t.owner && <p className="text-sm text-slate-600 mt-1">Owner: <strong>{t.owner}</strong></p>}
+              {t.target_date && <p className="text-sm text-slate-500 mt-0.5">Due: <strong>{t.target_date}</strong></p>}
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <select value={t.status} onClick={e => e.stopPropagation()} onChange={e => { updateTask(t.id, { status: e.target.value as RoadmapTask["status"] }); showFb("Updated"); refresh(); }} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-indigo-400 cursor-pointer">
+                  {["Not started","In progress","Blocked","Complete","Deferred"].map(s => <option key={s}>{s}</option>)}
+                </select>
+                <select value={t.priority} onClick={e => e.stopPropagation()} onChange={e => { updateTask(t.id, { priority: e.target.value as RoadmapTask["priority"] }); showFb("Updated"); refresh(); }} className={clsx("rounded-full border px-3 py-1 text-xs font-medium cursor-pointer focus:ring-2 focus:ring-indigo-400", t.priority === "Critical" ? "border-red-300 bg-red-50 text-red-700" : t.priority === "High" ? "border-amber-300 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-700")}>
+                  {["Critical","High","Medium","Low"].map(p => <option key={p}>{p}</option>)}
+                </select>
+              </div>
+              {t.assignees.length > 0 && <p className="text-xs text-slate-500 mt-3">{t.assignees.map(a => a.full_name || a.email).join(", ")}</p>}
             </div>
-            {t.owner && <p className="text-[10px] text-slate-500 mt-1">Owner: {t.owner}</p>}
-            <div className="flex items-center gap-2 mt-3">
-              <select value={t.status} onClick={e => e.stopPropagation()} onChange={e => { updateTask(t.id, { status: e.target.value as RoadmapTask["status"] }); showFb("Updated"); refresh(); }} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 focus:ring-1 focus:ring-indigo-400 cursor-pointer">
-                {["Not started","In progress","Blocked","Complete","Deferred"].map(s => <option key={s}>{s}</option>)}
-              </select>
-              <select value={t.priority} onClick={e => e.stopPropagation()} onChange={e => { updateTask(t.id, { priority: e.target.value as RoadmapTask["priority"] }); showFb("Updated"); refresh(); }} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 focus:ring-1 focus:ring-indigo-400 cursor-pointer">
-                {["Critical","High","Medium","Low"].map(p => <option key={p}>{p}</option>)}
-              </select>
-              {t.target_date && <span className="text-[10px] text-slate-400">Due {t.target_date}</span>}
-            </div>
-            {t.assignees.length > 0 && <p className="text-[10px] text-slate-400 mt-2">{t.assignees.map(a => a.full_name || a.email).join(", ")}</p>}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {filtered.length === 0 && (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-12 text-center">
-          <p className="text-sm text-slate-600">No tasks in this workspace yet.</p>
-          <button onClick={() => setEditingTask("new")} className="mt-2 text-sm text-indigo-600 hover:underline">Create one to get started</button>
+        <div className="rounded-xl border-2 border-dashed border-slate-300 bg-white p-16 text-center">
+          <p className="text-base text-slate-600">No tasks in this workspace yet.</p>
+          <button onClick={() => setEditingTask("new")} className="mt-3 text-base text-indigo-600 hover:underline font-medium">Create one to get started</button>
         </div>
       )}
 
