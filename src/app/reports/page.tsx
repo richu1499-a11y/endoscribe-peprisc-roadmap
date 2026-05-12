@@ -38,13 +38,13 @@ export default function ReportsPage() {
       </Link>
 
       <section>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {REPORTS.map(r => (
-            <div key={r.title} className="rounded-lg border border-slate-200 bg-white p-4 opacity-60">
-              <r.icon className="h-5 w-5 text-slate-400 mb-2" />
-              <h3 className="text-sm font-semibold text-slate-700">{r.title}</h3>
-              <p className="mt-1 text-xs text-slate-500">{r.description}</p>
-              <p className="mt-2 text-[10px] text-slate-400 italic">Coming soon</p>
+            <div key={r.title} className="rounded-xl border border-slate-200 bg-white p-5 opacity-60">
+              <r.icon className="h-6 w-6 text-slate-400 mb-3" />
+              <h3 className="text-base font-semibold text-slate-700">{r.title}</h3>
+              <p className="mt-1 text-sm text-slate-500">{r.description}</p>
+              <p className="mt-3 text-xs text-slate-400 italic">Coming soon</p>
             </div>
           ))}
         </div>
@@ -58,12 +58,12 @@ export default function ReportsPage() {
         {advancedOpen && (
           <>
             <p className="text-xs text-slate-500 mb-3">Deep analysis dashboards for established projects.</p>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {ADVANCED.map(r => (
-                <Link key={r.title} href={r.href} className="rounded-lg border border-slate-200 bg-white p-4 hover:border-indigo-300 hover:shadow-sm transition-all">
-                  <r.icon className="h-5 w-5 text-indigo-500 mb-2" />
-                  <h3 className="text-sm font-semibold text-slate-800">{r.title}</h3>
-                  <p className="mt-1 text-xs text-slate-500">{r.description}</p>
+                <Link key={r.title} href={r.href} className="rounded-xl border border-slate-200 bg-white p-5 hover:border-indigo-300 hover:shadow-md transition-all">
+                  <r.icon className="h-6 w-6 text-indigo-500 mb-3" />
+                  <h3 className="text-base font-semibold text-slate-800">{r.title}</h3>
+                  <p className="mt-1 text-sm text-slate-500">{r.description}</p>
                 </Link>
               ))}
             </div>

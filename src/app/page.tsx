@@ -63,39 +63,39 @@ export default function HomePage() {
       )}
 
       {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <Link href="/tasks" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 hover:border-indigo-300 transition-colors">
-          <Plus className="h-4 w-4 text-indigo-600" />
-          <span className="text-sm font-medium text-slate-700">New Task</span>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <Link href="/tasks" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 hover:border-indigo-300 hover:shadow-md transition-all">
+          <Plus className="h-5 w-5 text-indigo-600" />
+          <span className="text-sm font-semibold text-slate-800">New Task</span>
         </Link>
-        <Link href="/calendar" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 hover:border-indigo-300 transition-colors">
-          <CalendarDays className="h-4 w-4 text-indigo-600" />
-          <span className="text-sm font-medium text-slate-700">New Meeting</span>
+        <Link href="/calendar" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 hover:border-indigo-300 hover:shadow-md transition-all">
+          <CalendarDays className="h-5 w-5 text-indigo-600" />
+          <span className="text-sm font-semibold text-slate-800">New Meeting</span>
         </Link>
-        <Link href="/workspaces" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 hover:border-indigo-300 transition-colors">
-          <Briefcase className="h-4 w-4 text-indigo-600" />
-          <span className="text-sm font-medium text-slate-700">Workspaces</span>
+        <Link href="/workspaces" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 hover:border-indigo-300 hover:shadow-md transition-all">
+          <Briefcase className="h-5 w-5 text-indigo-600" />
+          <span className="text-sm font-semibold text-slate-800">Workspaces</span>
         </Link>
-        <Link href="/tasks" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 hover:border-indigo-300 transition-colors">
-          <ListChecks className="h-4 w-4 text-indigo-600" />
-          <span className="text-sm font-medium text-slate-700">All Tasks</span>
+        <Link href="/tasks" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 hover:border-indigo-300 hover:shadow-md transition-all">
+          <ListChecks className="h-5 w-5 text-indigo-600" />
+          <span className="text-sm font-semibold text-slate-800">All Tasks</span>
         </Link>
-        <Link href="/network" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 hover:border-indigo-300 transition-colors">
-          <Network className="h-4 w-4 text-indigo-600" />
-          <span className="text-sm font-medium text-slate-700">Roadmap Map</span>
+        <Link href="/network" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 hover:border-indigo-300 hover:shadow-md transition-all">
+          <Network className="h-5 w-5 text-indigo-600" />
+          <span className="text-sm font-semibold text-slate-800">Roadmap Map</span>
         </Link>
       </div>
 
       {/* Overdue */}
       {myOverdue.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-red-700 mb-2">Overdue ({myOverdue.length})</h2>
-          <div className="rounded-lg border border-red-200 bg-white divide-y divide-slate-100">
+          <h2 className="text-base font-bold text-red-700 mb-3">Overdue ({myOverdue.length})</h2>
+          <div className="space-y-2">
             {myOverdue.slice(0, 5).map(t => (
-              <Link key={t.id} href="/tasks" className="flex items-center justify-between px-4 py-2.5 hover:bg-red-50">
+              <Link key={t.id} href="/tasks" className="flex items-center justify-between rounded-xl border border-red-200 border-l-4 border-l-red-500 bg-red-50/30 px-5 py-4 hover:shadow-md transition-all">
                 <div className="min-w-0 flex-1 mr-3">
-                  <p className="text-sm font-medium text-slate-800 truncate">{t.title}</p>
-                  <p className="text-[10px] text-red-500">Due {t.target_date}</p>
+                  <p className="text-sm font-semibold text-slate-900">{t.title}</p>
+                  <p className="text-xs text-red-600 mt-0.5 font-medium">Due {t.target_date}</p>
                 </div>
                 <PriorityBadge priority={t.priority} />
               </Link>
@@ -107,15 +107,15 @@ export default function HomePage() {
       {/* Due soon */}
       {myDueSoon.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-slate-800 mb-2">Due soon</h2>
-          <div className="rounded-lg border border-slate-200 bg-white divide-y divide-slate-100">
+          <h2 className="text-base font-bold text-slate-800 mb-3">Due soon</h2>
+          <div className="space-y-2">
             {myDueSoon.map(t => (
-              <Link key={t.id} href="/tasks" className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50">
+              <Link key={t.id} href="/tasks" className="flex items-center justify-between rounded-xl border border-slate-200 border-l-4 border-l-blue-400 bg-white px-5 py-4 hover:shadow-md transition-all">
                 <div className="min-w-0 flex-1 mr-3">
-                  <p className="text-sm font-medium text-slate-800 truncate">{t.title}</p>
-                  <p className="text-[10px] text-slate-500">Due {t.target_date}</p>
+                  <p className="text-sm font-semibold text-slate-900">{t.title}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Due {t.target_date}</p>
                 </div>
-                <div className="flex gap-1.5"><StatusBadge status={t.status} /><PriorityBadge priority={t.priority} /></div>
+                <div className="flex gap-2"><StatusBadge status={t.status} /><PriorityBadge priority={t.priority} /></div>
               </Link>
             ))}
           </div>

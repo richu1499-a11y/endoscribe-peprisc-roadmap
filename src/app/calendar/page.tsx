@@ -73,20 +73,19 @@ export default function CalendarPage() {
             {userCanEdit && <button onClick={() => setShowAdd(true)} className="mt-2 text-sm text-indigo-600 hover:underline">Schedule one</button>}
           </div>
         ) : (
-          <div className="rounded-lg border border-slate-200 bg-white divide-y divide-slate-100">
+          <div className="space-y-3">
             {upcoming.map(m => (
-              <div key={m.id} className="px-4 py-3 flex items-center justify-between">
+              <div key={m.id} className="rounded-xl border border-slate-200 border-l-4 border-l-indigo-500 bg-white px-5 py-4 flex items-center justify-between hover:shadow-md transition-all">
                 <div>
-                  <p className="text-sm font-medium text-slate-800">{m.title}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-base font-semibold text-slate-900">{m.title}</p>
+                  <p className="text-sm text-slate-500 mt-1">
                     {m.start_time ? new Date(m.start_time).toLocaleString() : "No time set"}
                     {m.location && ` | ${m.location}`}
-                    {m.meeting_link && ` | Link`}
                   </p>
-                  {m.description && <p className="text-xs text-slate-400 mt-0.5">{m.description}</p>}
+                  {m.description && <p className="text-sm text-slate-400 mt-0.5">{m.description}</p>}
                 </div>
-                <a href={`/api/meetings/${m.id}/ics`} download className="flex items-center gap-1 rounded border border-slate-300 px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50">
-                  <Download className="h-3.5 w-3.5" /> .ics
+                <a href={`/api/meetings/${m.id}/ics`} download className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  <Download className="h-4 w-4" /> .ics
                 </a>
               </div>
             ))}
