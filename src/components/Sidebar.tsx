@@ -8,7 +8,7 @@ import { clsx } from "clsx";
 import {
   Home, Briefcase, CalendarDays, Settings,
   Users, Database, LayoutGrid, FileSearch, Wrench, ChevronDown, ChevronRight,
-  Network,
+  Network, ListChecks,
 } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
 import { getCurrentRole, isAdmin as checkIsAdmin } from "@/lib/auth";
@@ -17,8 +17,9 @@ interface NavItem { href: string; label: string; icon: React.ComponentType<{ cla
 
 const NAV_MAIN: NavItem[] = [
   { href: "/",            label: "Home",        icon: Home },
-  { href: "/workspaces",  label: "Workspaces",  icon: Briefcase },
   { href: "/roadmap",     label: "Roadmap",     icon: Network },
+  { href: "/workspaces",  label: "Workspaces",  icon: Briefcase },
+  { href: "/tasks",       label: "Tasks",       icon: ListChecks },
   { href: "/calendar",    label: "Calendar",    icon: CalendarDays },
 ];
 
@@ -49,8 +50,8 @@ export default function Sidebar() {
     const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
     return (
       <Link key={item.href} href={item.href} className={clsx(
-        "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-        active ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+        "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+        active ? "bg-teal-50 text-teal-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
       )}>
         <item.icon className="h-4 w-4" />
         {item.label}
@@ -62,10 +63,10 @@ export default function Sidebar() {
     <aside className="flex w-56 shrink-0 flex-col border-r border-slate-200 bg-white">
       {/* Logo */}
       <div className="border-b border-slate-100 px-4 py-4">
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/endoscribe-mark.svg" alt="EndoScribe" width={28} height={28} />
+        <Link href="/" className="flex items-center gap-2.5">
+          <Image src="/endoscribe-mark.svg" alt="EndoScribe" width={36} height={36} />
           <div>
-            <p className="text-sm font-bold text-[#1e3a5f]">EndoScribe</p>
+            <p className="text-base font-bold text-[#1e3a5f]">EndoScribe</p>
             <p className="text-[10px] text-slate-400 -mt-0.5">Workspace OS</p>
           </div>
         </Link>

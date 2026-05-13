@@ -11,9 +11,12 @@ import StatusBadge from "@/components/StatusBadge";
 import PriorityBadge from "@/components/PriorityBadge";
 
 const WS_COLORS: Record<string, string> = {
-  "endoscribe-core-template-engine": "#3b82f6", "peprisc-prediction-models": "#8b5cf6",
-  "voice-asr-room-workflow": "#f59e0b", "recommendation-engine": "#ec4899",
-  "analytics-quality": "#14b8a6", "infrastructure-deployment-strategy": "#06b6d4",
+  "endoscribe-core-template-engine": "#0d9488",
+  "voice-asr-room-workflow": "#f59e0b",
+  "peprisc-prediction-models": "#8b5cf6",
+  "recommendation-engine": "#ec4899",
+  "analytics-quality": "#14b8a6",
+  "infrastructure-deployment-strategy": "#06b6d4",
   "validation-regulatory-translation": "#ef4444",
 };
 
@@ -65,16 +68,16 @@ export default function HomePage() {
     <div className="mx-auto max-w-6xl space-y-8">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Image src="/endoscribe-mark.svg" alt="" width={44} height={44} />
+        <Image src="/endoscribe-mark.svg" alt="" width={48} height={48} />
         <div>
           <h1 className="text-2xl font-bold text-[#1e3a5f]">EndoScribe</h1>
-          <p className="text-sm text-slate-500">Project Command Center</p>
+          <p className="text-sm text-slate-500">Program Command Center</p>
         </div>
       </div>
 
       {/* Quick stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Active Tasks" value={active.length} color="bg-blue-500" />
+        <StatCard label="Active Tasks" value={active.length} color="bg-teal-500" />
         <StatCard label="High Priority" value={highPriority.length} color="bg-amber-500" />
         <StatCard label="Blocked" value={blocked.length} color={blocked.length > 0 ? "bg-red-500" : "bg-slate-400"} />
         <StatCard label="Overdue" value={overdue.length} color={overdue.length > 0 ? "bg-red-500" : "bg-slate-400"} />
@@ -83,7 +86,7 @@ export default function HomePage() {
       {/* Tasks for me */}
       {currentUserId && myTasks.length > 0 && (
         <section>
-          <h2 className="text-lg font-bold text-indigo-700 mb-4">My Tasks ({myTasks.length})</h2>
+          <h2 className="text-lg font-bold text-teal-700 mb-4">My Tasks ({myTasks.length})</h2>
           <div className="space-y-2">
             {myTasks.slice(0, 6).map(t => (
               <TaskRow key={t.id} task={t} />
@@ -103,7 +106,7 @@ export default function HomePage() {
             {byOwner.slice(0, 6).map(([owner, ownerTasks]) => (
               <div key={owner} className="rounded-xl border border-slate-200 bg-white p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-base font-bold text-indigo-700">{owner}</h3>
+                  <h3 className="text-base font-bold text-teal-700">{owner}</h3>
                   <span className="text-sm text-slate-500">{ownerTasks.length} task{ownerTasks.length !== 1 ? "s" : ""}</span>
                 </div>
                 <div className="space-y-2">
@@ -209,7 +212,7 @@ function TaskRow({ task: t }: { task: TaskWithAssignees }) {
       <div className="min-w-0 flex-1 mr-3">
         <p className="text-sm font-semibold text-slate-900">{t.title}</p>
         <div className="flex gap-3 mt-1 text-xs text-slate-500">
-          {owner && <span className="text-indigo-600 font-medium">{owner}</span>}
+          {owner && <span className="text-teal-600 font-medium">{owner}</span>}
           <span>{t.workspace}</span>
           {t.target_date && <span>Due {t.target_date}</span>}
         </div>
