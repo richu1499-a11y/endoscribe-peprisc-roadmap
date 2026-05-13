@@ -121,13 +121,13 @@ export default function RoadmapPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Program Roadmap</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Milestones & Program Board</h1>
           <p className="text-sm text-slate-500 mt-1">
             {totalActive} active across {workspaces.length} workspaces | {complete}/{totalTasks} complete
           </p>
         </div>
         <Link href="/network" className="rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 transition-colors">
-          Network View
+          Roadmap View
         </Link>
       </div>
 

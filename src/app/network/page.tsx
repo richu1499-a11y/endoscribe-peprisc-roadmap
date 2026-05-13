@@ -105,7 +105,7 @@ export default function RoadmapMapPage() {
     <div className="mx-auto max-w-7xl space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Roadmap Map</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Roadmap</h1>
           <p className="text-sm text-slate-500 mt-1">{filtered.length} tasks across {byWorkspace.size} workspaces, {depCount} dependencies</p>
         </div>
         <div className="flex gap-2">

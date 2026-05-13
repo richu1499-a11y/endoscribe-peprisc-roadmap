@@ -112,13 +112,16 @@ export default function AdminUsersPage() {
   async function handleInvite(email: string, role: string) {
     setError(null);
     try {
-      const sb = getSupabaseBrowser();
-      if (!sb) return;
-      const { data: { user } } = await sb.auth.getUser();
-      await sb.from("user_invites").insert({ email, app_role: role, invited_by: user?.id ?? null });
+      const res = await fetch("/api/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, role }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send invite");
       await createAuditLog({ action: "invite_created", entity_type: "user_invite", entity_label: email, new_value: { email, app_role: role } });
       setShowInvite(false);
-      showFb(`Invite created for ${email}`);
+      showFb(`Invite email sent to ${email}`);
     } catch (err: unknown) { setError(err instanceof Error ? err.message : "Failed"); }
   }
 
