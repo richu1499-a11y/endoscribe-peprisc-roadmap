@@ -7,13 +7,13 @@ import Image from "next/image";
 import { signIn } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
 import AuthForm from "@/components/AuthForm";
-import { ListChecks, Briefcase, CalendarDays, BarChart3 } from "lucide-react";
+import { ListChecks, Briefcase, CalendarDays, Network } from "lucide-react";
 
 const FEATURES = [
-  { icon: ListChecks, title: "Tasks", desc: "Create, assign, and track tasks with inline editing." },
-  { icon: Briefcase, title: "Workspaces", desc: "Organized project verticals for team execution." },
+  { icon: ListChecks, title: "Task Management", desc: "Create, assign, and track tasks across workspaces." },
+  { icon: Briefcase, title: "Workspaces", desc: "Seven organized verticals for project execution." },
+  { icon: Network, title: "Roadmap & Network", desc: "Interactive program board and dependency graph." },
   { icon: CalendarDays, title: "Calendar", desc: "Schedule meetings and export calendar invites." },
-  { icon: BarChart3, title: "Reports", desc: "Summaries, timelines, and advanced analysis." },
 ];
 
 export default function LoginPage() {
@@ -32,43 +32,45 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-100 flex flex-col items-center justify-center px-4 py-12">
       {/* Logo + Tagline */}
-      <div className="text-center mb-8">
-        <Image src="/endoscribe-logo.svg" alt="EndoScribe" width={180} height={40} className="mx-auto" />
-        <p className="mt-3 text-sm text-slate-600">Ambient AI workflow and task-management workspace</p>
-        <p className="mt-1 text-xs text-slate-400">Coordinate tasks, meetings, and project execution from one secure workspace.</p>
+      <div className="text-center mb-10">
+        <Image src="/endoscribe-logo.svg" alt="EndoScribe" width={280} height={64} className="mx-auto" priority />
+        <p className="mt-4 text-base text-slate-600 font-medium">Workspace OS</p>
+        <p className="mt-2 text-sm text-slate-500 max-w-md mx-auto">
+          Ambient AI workflow and task-management workspace for the EndoScribe + PEPRisc team.
+        </p>
       </div>
 
       {/* Sign in card */}
       <div className="w-full max-w-sm">
         {isSupabaseConfigured ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">Sign in</h2>
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
+            <h2 className="text-xl font-bold text-slate-900 mb-5">Sign in</h2>
             <AuthForm mode="login" onSubmit={handleSubmit} error={error} />
-            <p className="mt-4 text-center text-xs text-slate-400">
-              No account? <Link href="/signup" className="text-indigo-600 hover:underline">Request access</Link>
+            <p className="mt-5 text-center text-sm text-slate-400">
+              No account? <Link href="/signup" className="text-indigo-600 hover:underline font-medium">Request access</Link>
             </p>
           </div>
         ) : (
-          <div className="rounded-xl border border-blue-200 bg-blue-50 p-6 text-center">
-            <p className="text-sm text-blue-800">Demo mode active. <Link href="/" className="underline">Enter app</Link></p>
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-8 text-center">
+            <p className="text-base text-blue-800">Demo mode active. <Link href="/" className="underline font-medium">Enter app</Link></p>
           </div>
         )}
       </div>
 
       {/* Feature cards */}
-      <div className="mt-10 grid grid-cols-2 gap-3 max-w-md w-full sm:grid-cols-4">
+      <div className="mt-12 grid grid-cols-2 gap-4 max-w-lg w-full sm:grid-cols-4">
         {FEATURES.map(f => (
-          <div key={f.title} className="rounded-lg bg-white/60 border border-slate-200/50 p-3 text-center">
-            <f.icon className="h-5 w-5 text-indigo-500 mx-auto mb-1.5" />
-            <p className="text-xs font-medium text-slate-700">{f.title}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">{f.desc}</p>
+          <div key={f.title} className="rounded-xl bg-white/70 border border-slate-200/60 p-4 text-center hover:shadow-md transition-all">
+            <f.icon className="h-7 w-7 text-indigo-500 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-slate-700">{f.title}</p>
+            <p className="text-xs text-slate-400 mt-1">{f.desc}</p>
           </div>
         ))}
       </div>
 
-      <p className="mt-8 text-[10px] text-slate-400">Access is limited to invited team members.</p>
+      <p className="mt-10 text-xs text-slate-400">Access is limited to invited team members.</p>
     </div>
   );
 }

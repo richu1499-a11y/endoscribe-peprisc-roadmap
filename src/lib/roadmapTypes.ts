@@ -50,6 +50,7 @@ export interface RoadmapTask {
   workspace?: string;
   is_seeded?: boolean;
   is_archived?: boolean;
+  epic?: string;
 }
 
 export interface TaskAssignment {

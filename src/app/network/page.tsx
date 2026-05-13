@@ -12,6 +12,11 @@ import { X, RotateCcw, ArrowRight } from "lucide-react";
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
 
 const WS_COLORS: Record<string, string> = {
+  "endoscribe-core-template-engine": "#3b82f6", "peprisc-model-integration": "#8b5cf6",
+  "validation-and-research": "#10b981", "hardware-audio-workflow": "#f59e0b",
+  "irb-regulatory-compliance": "#ef4444", "platform-and-infrastructure": "#06b6d4",
+  "project-management-ops": "#64748b",
+  // Legacy fallbacks
   "endoscribe-core": "#3b82f6", "peprisc": "#8b5cf6", "hardware-workflow": "#f59e0b",
   "irb-fda-translation": "#ef4444", "research-study-trial": "#10b981",
 };

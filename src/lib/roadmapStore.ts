@@ -36,11 +36,13 @@ export async function getProfiles(): Promise<Profile[]> {
 // Workspace Groups
 // ---------------------------------------------------------------------------
 const FALLBACK_WS: WorkspaceGroup[] = [
-  { id: "ws1", slug: "endoscribe-core", title: "EndoScribe Core", description: "Ambient AI scribe, procedure documentation, speech-to-structure.", icon: "FileText", order_index: 10, is_visible: true, is_system: true },
-  { id: "ws2", slug: "peprisc", title: "PEPRisc", description: "Post-ERCP pancreatitis risk prediction and model integration.", icon: "BarChart", order_index: 20, is_visible: true, is_system: true },
-  { id: "ws3", slug: "hardware-workflow", title: "Hardware / Workflow", description: "Audio capture, microphones, procedural-room workflow.", icon: "Settings", order_index: 30, is_visible: true, is_system: true },
-  { id: "ws4", slug: "irb-fda-translation", title: "IRB, FDA & Translation", description: "IRB, FDA/CDS/SaMD, JHTV, compliance, and commercialization.", icon: "Shield", order_index: 40, is_visible: true, is_system: true },
-  { id: "ws5", slug: "research-study-trial", title: "Research Study / Prospective Trial", description: "Study design, validation cohort, outcomes, publication.", icon: "FlaskConical", order_index: 50, is_visible: true, is_system: true },
+  { id: "ws1", slug: "endoscribe-core-template-engine", title: "EndoScribe Core / Template Engine", description: "Ambient AI scribe, template authoring, procedure documentation, speech-to-structure pipeline.", icon: "FileText", order_index: 10, is_visible: true, is_system: true },
+  { id: "ws2", slug: "peprisc-model-integration", title: "PEPRisc Model & Integration", description: "Post-ERCP pancreatitis risk prediction model, variable extraction, and clinical integration.", icon: "BarChart", order_index: 20, is_visible: true, is_system: true },
+  { id: "ws3", slug: "validation-and-research", title: "Validation & Research", description: "Study design, validation cohort, evidence ladder, prospective trial, and publication pipeline.", icon: "FlaskConical", order_index: 30, is_visible: true, is_system: true },
+  { id: "ws4", slug: "hardware-audio-workflow", title: "Hardware / Audio / Workflow", description: "Audio capture hardware, microphone evaluation, procedural-room integration, and signal quality.", icon: "Mic", order_index: 40, is_visible: true, is_system: true },
+  { id: "ws5", slug: "irb-regulatory-compliance", title: "IRB / Regulatory / Compliance", description: "IRB protocol, FDA/CDS/SaMD strategy, data governance, and institutional compliance.", icon: "Shield", order_index: 50, is_visible: true, is_system: true },
+  { id: "ws6", slug: "platform-and-infrastructure", title: "Platform & Infrastructure", description: "Workspace OS web app, deployment, CI/CD, mobile shell, authentication, and DevOps.", icon: "Server", order_index: 60, is_visible: true, is_system: true },
+  { id: "ws7", slug: "project-management-ops", title: "Project Management & Ops", description: "Team coordination, meeting cadence, documentation, onboarding, and operational processes.", icon: "Users", order_index: 70, is_visible: true, is_system: true },
 ];
 
 export async function getWorkspaceGroups(): Promise<WorkspaceGroup[]> {
@@ -735,12 +737,14 @@ export async function updateProfileRole(profileId: string, newRole: string): Pro
   const client = sb()!;
   // Get current profile for audit
   const { data: prev } = await client.from("profiles").select("*").eq("id", profileId).single();
-  const { data, error } = await client.from("profiles").update({ role: newRole }).eq("id", profileId).select().single();
+  // Map role to app_role: admin → admin, editor/viewer → user
+  const appRole = newRole === "admin" ? "admin" : "user";
+  const { data, error } = await client.from("profiles").update({ role: newRole, app_role: appRole }).eq("id", profileId).select().single();
   if (error) throw new Error(error.message.includes("policy") ? "Permission denied. Admin role required to change user roles." : error.message);
   await createAuditLog({
     action: "role_changed", entity_type: "profile", entity_id: profileId,
-    entity_label: data.email, previous_value: prev ? { role: prev.role } : null,
-    new_value: { role: newRole },
+    entity_label: data.email, previous_value: prev ? { role: prev.role, app_role: prev.app_role } : null,
+    new_value: { role: newRole, app_role: appRole },
   });
   return data as Profile;
 }

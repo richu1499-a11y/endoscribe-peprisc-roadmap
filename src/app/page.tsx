@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { getTasks, getTaskAssignments, getProfiles, getTasksWithAssignees, getWorkspaceGroups } from "@/lib/roadmapStore";
 import { getCurrentUser } from "@/lib/auth";
-import { isSupabaseConfigured, getSupabaseBrowser } from "@/lib/supabase/browser";
+import { isSupabaseConfigured } from "@/lib/supabase/browser";
 import type { TaskWithAssignees, WorkspaceGroup } from "@/lib/roadmapTypes";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,6 +11,11 @@ import StatusBadge from "@/components/StatusBadge";
 import PriorityBadge from "@/components/PriorityBadge";
 
 const WS_COLORS: Record<string, string> = {
+  "endoscribe-core-template-engine": "#3b82f6", "peprisc-model-integration": "#8b5cf6",
+  "validation-and-research": "#10b981", "hardware-audio-workflow": "#f59e0b",
+  "irb-regulatory-compliance": "#ef4444", "platform-and-infrastructure": "#06b6d4",
+  "project-management-ops": "#64748b",
+  // Legacy
   "endoscribe-core": "#3b82f6", "peprisc": "#8b5cf6", "hardware-workflow": "#f59e0b",
   "irb-fda-translation": "#ef4444", "research-study-trial": "#10b981",
 };
@@ -40,6 +45,12 @@ export default function HomePage() {
   const blocked = active.filter(t => t.status === "Blocked");
   const overdue = active.filter(t => t.target_date && t.target_date < today);
   const dueSoon = active.filter(t => t.target_date && t.target_date >= today).sort((a, b) => (a.target_date ?? "").localeCompare(b.target_date ?? "")).slice(0, 6);
+
+  // Tasks assigned to current user
+  const myTasks = useMemo(() => {
+    if (!currentUserId) return [];
+    return active.filter(t => t.assignees.some(a => a.id === currentUserId));
+  }, [active, currentUserId]);
 
   // Group by owner
   const byOwner = useMemo(() => {
@@ -71,6 +82,19 @@ export default function HomePage() {
         <StatCard label="Blocked" value={blocked.length} color={blocked.length > 0 ? "bg-red-500" : "bg-slate-400"} />
         <StatCard label="Overdue" value={overdue.length} color={overdue.length > 0 ? "bg-red-500" : "bg-slate-400"} />
       </div>
+
+      {/* Tasks for me */}
+      {currentUserId && myTasks.length > 0 && (
+        <section>
+          <h2 className="text-lg font-bold text-indigo-700 mb-4">My Tasks ({myTasks.length})</h2>
+          <div className="space-y-2">
+            {myTasks.slice(0, 6).map(t => (
+              <TaskRow key={t.id} task={t} />
+            ))}
+            {myTasks.length > 6 && <p className="text-xs text-slate-400 text-center">+{myTasks.length - 6} more in Workspaces</p>}
+          </div>
+        </section>
+      )}
 
       {/* Two columns: Who's doing what + What's due */}
       <div className="grid gap-6 lg:grid-cols-2">

@@ -18,7 +18,8 @@ interface NavItem { href: string; label: string; icon: React.ComponentType<{ cla
 const NAV_MAIN: NavItem[] = [
   { href: "/",            label: "Home",        icon: Home },
   { href: "/workspaces",  label: "Workspaces",  icon: Briefcase },
-  { href: "/network",     label: "Roadmap",     icon: Network },
+  { href: "/roadmap",     label: "Roadmap",     icon: Milestone },
+  { href: "/network",     label: "Network Map", icon: Network },
   { href: "/calendar",    label: "Calendar",    icon: CalendarDays },
 ];
 
