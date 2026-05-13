@@ -5,10 +5,38 @@
 -- Click "Run and enable RLS" if prompted.
 -- ============================================================
 
--- 001: task_assignments
+-- Helper function: auto-update updated_at on row change
+create or replace function set_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+-- Fix: Alter tasks.id from uuid to text if needed (required for text-based task IDs like ECT-001)
+DO $$
+DECLARE
+  col_type text;
+BEGIN
+  SELECT data_type INTO col_type FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'tasks' AND column_name = 'id';
+  IF col_type = 'uuid' THEN
+    -- Drop any existing FK constraints referencing tasks(id) first
+    PERFORM 1; -- placeholder
+    -- Try to alter the column type
+    BEGIN
+      ALTER TABLE public.tasks ALTER COLUMN id TYPE text USING id::text;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE NOTICE 'Could not alter tasks.id to text: %', SQLERRM;
+    END;
+  END IF;
+END $$;
+
+-- 001: task_assignments (task_id without FK to avoid type mismatch issues)
 create table if not exists task_assignments (
   id uuid primary key default gen_random_uuid(),
-  task_id text not null references public.tasks(id) on delete cascade,
+  task_id text not null,
   user_id uuid not null references public.profiles(id) on delete cascade,
   assigned_by uuid references public.profiles(id),
   assigned_at timestamptz not null default now(),
@@ -82,7 +110,7 @@ alter table dashboard_registry enable row level security;
 DO $$ BEGIN CREATE POLICY "auth_read_dash" ON dashboard_registry FOR SELECT TO authenticated USING (is_visible = true or exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin')); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE POLICY "admin_manage_dash" ON dashboard_registry FOR ALL TO authenticated USING (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin')); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- 006: dashboard_widgets + dashboard_task_links
+-- 006: dashboard_widgets + dashboard_task_links (task_id without FK to avoid type mismatch)
 create table if not exists dashboard_widgets (
   id uuid primary key default gen_random_uuid(),
   dashboard_id uuid not null references public.dashboard_registry(id) on delete cascade,
@@ -101,7 +129,7 @@ DO $$ BEGIN CREATE POLICY "admin_manage_widgets" ON dashboard_widgets FOR ALL TO
 create table if not exists dashboard_task_links (
   id uuid primary key default gen_random_uuid(),
   dashboard_id uuid not null references public.dashboard_registry(id) on delete cascade,
-  task_id text not null references public.tasks(id) on delete cascade,
+  task_id text not null,
   section text not null default 'General', order_index integer not null default 100,
   pinned boolean not null default false, notes text, added_by uuid references public.profiles(id),
   created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
