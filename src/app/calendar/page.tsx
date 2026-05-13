@@ -50,7 +50,7 @@ export default function CalendarPage() {
           <p className="text-sm text-slate-500 mt-0.5">Meetings, schedule, and coordination.</p>
         </div>
         {userCanEdit && (
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700">
             <Plus className="h-4 w-4" /> Schedule Meeting
           </button>
         )}
@@ -70,12 +70,12 @@ export default function CalendarPage() {
         {upcoming.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
             <p className="text-sm text-slate-600">No upcoming meetings.</p>
-            {userCanEdit && <button onClick={() => setShowAdd(true)} className="mt-2 text-sm text-indigo-600 hover:underline">Schedule one</button>}
+            {userCanEdit && <button onClick={() => setShowAdd(true)} className="mt-2 text-sm text-teal-600 hover:underline">Schedule one</button>}
           </div>
         ) : (
           <div className="space-y-3">
             {upcoming.map(m => (
-              <div key={m.id} className="rounded-xl border border-slate-200 border-l-4 border-l-indigo-500 bg-white px-5 py-4 flex items-center justify-between hover:shadow-md transition-all">
+              <div key={m.id} className="rounded-xl border border-slate-200 border-l-4 border-l-teal-500 bg-white px-5 py-4 flex items-center justify-between hover:shadow-md transition-all">
                 <div>
                   <p className="text-base font-semibold text-slate-900">{m.title}</p>
                   <p className="text-sm text-slate-500 mt-1">
@@ -84,9 +84,14 @@ export default function CalendarPage() {
                   </p>
                   {m.description && <p className="text-sm text-slate-400 mt-0.5">{m.description}</p>}
                 </div>
-                <a href={`/api/meetings/${m.id}/ics`} download className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                  <Download className="h-4 w-4" /> .ics
-                </a>
+                <div className="flex gap-2 shrink-0">
+                  <a href={`/api/meetings/${m.id}/ics`} download className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    <Download className="h-4 w-4" /> .ics
+                  </a>
+                  {userCanEdit && (
+                    <button onClick={async () => { if (!confirm("Delete this meeting?")) return; const sb = getSupabaseBrowser(); if (!sb) return; await sb.from("meetings").delete().eq("id", m.id); await refresh(); }} className="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50">Delete</button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -159,7 +164,7 @@ function MeetingForm({ onSave, onCancel }: { onSave: (form: Partial<Meeting>) =>
           <div><label className={l}>Attendee emails (comma-separated)</label><input className={c} value={attendeeEmails} onChange={e => setAttendeeEmails(e.target.value)} placeholder="name@jh.edu, name2@jh.edu" /></div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onCancel} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600">Cancel</button>
-            <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white">Create Meeting</button>
+            <button type="submit" className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white">Create Meeting</button>
           </div>
         </form>
       </div>

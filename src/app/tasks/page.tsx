@@ -112,6 +112,17 @@ export default function TasksPage() {
     } catch {}
   }
 
+  async function handleHardDelete(id: string) {
+    if (!confirm("Permanently delete this task? This cannot be undone.")) return;
+    try {
+      const { deleteTask } = await import("@/lib/roadmapStore");
+      await deleteTask(id);
+      setSelected(null);
+      showFb("Task deleted");
+      await refresh();
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : "Delete failed"); }
+  }
+
   const selectCls = "rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm bg-white focus:border-teal-400 focus:outline-none";
   const tabCls = (key: TabKey) => clsx("px-4 py-2.5 text-sm font-medium rounded-lg transition-colors", tab === key ? "bg-teal-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50");
 
@@ -141,7 +152,7 @@ export default function TasksPage() {
         {currentUserId && <button className={tabCls("mine")} onClick={() => setTab("mine")}>My Tasks ({myTasks.length})</button>}
         <button className={tabCls("high")} onClick={() => setTab("high")}>High Priority ({highPriority.length})</button>
         <button className={tabCls("due-soon")} onClick={() => setTab("due-soon")}>Due Soon ({dueSoon.length})</button>
-        {userIsAdmin && <button className={tabCls("archived")} onClick={() => setTab("archived")}>Archived ({archivedTasks.length})</button>}
+        {userCanEdit && <button className={tabCls("archived")} onClick={() => setTab("archived")}>Archived ({archivedTasks.length})</button>}
       </div>
 
       {/* Filters */}
@@ -215,7 +226,8 @@ export default function TasksPage() {
           task={selected}
           onClose={() => setSelected(null)}
           onEdit={userCanEdit ? (t => { setEditing(t); setSelected(null); }) : (() => {})}
-          onDelete={userIsAdmin ? handleArchive : undefined}
+          onDelete={userCanEdit ? handleArchive : undefined}
+          onHardDelete={userCanEdit ? handleHardDelete : undefined}
           isAdmin={userIsAdmin}
         />
       )}
