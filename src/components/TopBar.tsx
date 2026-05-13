@@ -1,10 +1,12 @@
 "use client";
 
+import ThemeToggle from "./ThemeToggle";
 import UserMenu from "./UserMenu";
 
 export default function TopBar() {
   return (
-    <header className="flex h-12 items-center justify-end border-b border-slate-100 bg-white px-6">
+    <header className="flex h-14 items-center justify-end gap-3 border-b border-[var(--border)] bg-[var(--surface)]/82 px-6 backdrop-blur">
+      <ThemeToggle />
       <UserMenu />
     </header>
   );

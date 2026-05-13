@@ -6,6 +6,14 @@ import type { Profile } from "./roadmapTypes";
 export type UserRole = "admin" | "editor" | "viewer";
 export type AppRole = "admin" | "user";
 
+export function normalizeAppRole(role: string | null | undefined): AppRole {
+  return role === "admin" ? "admin" : "user";
+}
+
+export function dbRoleForAppRole(role: string | null | undefined): UserRole {
+  return normalizeAppRole(role) === "admin" ? "admin" : "editor";
+}
+
 export async function getCurrentUser() {
   const sb = getSupabaseBrowser();
   if (!sb) return null;
@@ -24,7 +32,9 @@ export async function getCurrentProfile(): Promise<Profile | null> {
 
 export async function getCurrentRole(): Promise<UserRole | null> {
   const profile = await getCurrentProfile();
-  return (profile?.role as UserRole) ?? null;
+  if (!profile) return null;
+  if (profile.app_role === "admin" || profile.role === "admin") return "admin";
+  return (profile.role as UserRole) ?? null;
 }
 
 export async function getCurrentAppRole(): Promise<AppRole> {

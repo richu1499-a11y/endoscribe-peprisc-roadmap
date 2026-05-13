@@ -47,15 +47,15 @@ export default function TaskForm({ task, workspaces, profiles, currentAssigneeId
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const finalForm = isNew && !form.id ? { ...form, id: `TASK-${Date.now().toString(36).toUpperCase()}` } : form;
-    onSave(finalForm, selectedAssignees.length > 0 ? selectedAssignees : undefined);
+    onSave(finalForm, profiles ? selectedAssignees : undefined);
   }
 
-  const c = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none";
-  const l = "block text-xs font-medium text-slate-600 mb-1";
+  const c = "app-field w-full rounded-lg px-3 py-2 text-sm";
+  const l = "block text-xs font-medium text-[var(--muted)] mb-1";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h3 className="text-lg font-semibold text-slate-800">{isNew ? "New Task" : "Edit Task"}</h3>
+      <h3 className="text-lg font-semibold text-[var(--text)]">{isNew ? "New Task" : "Edit Task"}</h3>
 
       <div>
         <label className={l}>Task name *</label>
@@ -85,9 +85,9 @@ export default function TaskForm({ task, workspaces, profiles, currentAssigneeId
       {profiles && profiles.length > 0 && (
         <div>
           <label className={l}>Assignee</label>
-          <div className="max-h-28 overflow-y-auto rounded-lg border border-slate-300 p-2 space-y-0.5">
+          <div className="max-h-28 space-y-0.5 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2">
             {profiles.map(p => (
-              <label key={p.id} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 px-1 rounded">
+              <label key={p.id} className="flex cursor-pointer items-center gap-2 rounded px-1 text-sm text-[var(--text)] hover:bg-[var(--surface-strong)]">
                 <input type="checkbox" checked={selectedAssignees.includes(p.id)} onChange={() => toggleAssignee(p.id)} className="rounded" />
                 {p.full_name || p.email}
               </label>
@@ -101,28 +101,28 @@ export default function TaskForm({ task, workspaces, profiles, currentAssigneeId
         <div><label className={l}>Due date</label><input type="date" className={c} value={form.target_date ?? ""} onChange={e => set("target_date", e.target.value || null)} /></div>
       </div>
 
-      <button type="button" onClick={() => setShowMore(!showMore)} className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700">
+      <button type="button" onClick={() => setShowMore(!showMore)} className="flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--text)]">
         {showMore ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         More options
       </button>
 
       {showMore && (
-        <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <div><label className={l}>Notes</label><textarea className={c + " h-14 bg-white"} value={form.notes} onChange={e => set("notes", e.target.value)} /></div>
-          <div><label className={l}>Next action</label><input className={c + " bg-white"} value={form.next_action} onChange={e => set("next_action", e.target.value)} /></div>
-          <div><label className={l}>Owner</label><input className={c + " bg-white"} value={form.owner} onChange={e => set("owner", e.target.value)} /></div>
+        <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+          <div><label className={l}>Notes</label><textarea className={c + " h-14"} value={form.notes} onChange={e => set("notes", e.target.value)} /></div>
+          <div><label className={l}>Next action</label><input className={c} value={form.next_action} onChange={e => set("next_action", e.target.value)} /></div>
+          <div><label className={l}>Owner</label><input className={c} value={form.owner} onChange={e => set("owner", e.target.value)} /></div>
           <div className="grid grid-cols-3 gap-3">
-            <div><label className={l}>FDA</label><select className={c + " bg-white"} value={form.regulatory_relevance} onChange={e => set("regulatory_relevance", e.target.value as RoadmapTask["regulatory_relevance"])}>{REGULATORY_LEVELS.map(r => <option key={r}>{r}</option>)}</select></div>
-            <div><label className={l}>HIPAA</label><select className={c + " bg-white"} value={form.hipaa_relevance} onChange={e => set("hipaa_relevance", e.target.value as RoadmapTask["hipaa_relevance"])}>{REGULATORY_LEVELS.map(r => <option key={r}>{r}</option>)}</select></div>
-            <div><label className={l}>Evidence</label><select className={c + " bg-white"} value={form.evidence_stage} onChange={e => set("evidence_stage", e.target.value as RoadmapTask["evidence_stage"])}>{EVIDENCE_STAGES.map(s => <option key={s}>{s}</option>)}</select></div>
+            <div><label className={l}>FDA</label><select className={c} value={form.regulatory_relevance} onChange={e => set("regulatory_relevance", e.target.value as RoadmapTask["regulatory_relevance"])}>{REGULATORY_LEVELS.map(r => <option key={r}>{r}</option>)}</select></div>
+            <div><label className={l}>HIPAA</label><select className={c} value={form.hipaa_relevance} onChange={e => set("hipaa_relevance", e.target.value as RoadmapTask["hipaa_relevance"])}>{REGULATORY_LEVELS.map(r => <option key={r}>{r}</option>)}</select></div>
+            <div><label className={l}>Evidence</label><select className={c} value={form.evidence_stage} onChange={e => set("evidence_stage", e.target.value as RoadmapTask["evidence_stage"])}>{EVIDENCE_STAGES.map(s => <option key={s}>{s}</option>)}</select></div>
           </div>
-          {isNew && <div><label className={l}>Task ID (auto if blank)</label><input className={c + " bg-white"} value={form.id} onChange={e => set("id", e.target.value)} placeholder="Leave blank" /></div>}
+          {isNew && <div><label className={l}>Task ID (auto if blank)</label><input className={c} value={form.id} onChange={e => set("id", e.target.value)} placeholder="Leave blank" /></div>}
         </div>
       )}
 
       <div className="flex justify-end gap-3 pt-1">
-        <button type="button" onClick={onCancel} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
-        <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">{isNew ? "Create Task" : "Save Changes"}</button>
+        <button type="button" onClick={onCancel} className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)] hover:bg-[var(--surface-strong)]">Cancel</button>
+        <button type="submit" className="app-button-primary rounded-lg px-4 py-2 text-sm font-medium">{isNew ? "Create Task" : "Save Changes"}</button>
       </div>
     </form>
   );

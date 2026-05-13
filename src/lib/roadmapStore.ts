@@ -3,6 +3,7 @@
 import { getSupabaseBrowser, isSupabaseConfigured } from "./supabase/browser";
 import { MOCK_WORKSTREAMS, MOCK_TASKS, MOCK_DECISIONS, MOCK_RISKS, MOCK_MILESTONES } from "./mockData";
 import type { Workstream, RoadmapTask, DecisionItem, RiskItem, Milestone, Profile, TaskAssignment, TaskWithAssignees, RegulatoryItem, GovernanceItem, ValidationItem, DashboardRegistryItem, DashboardWidget, DashboardTaskLink, FutureModule, AdminEntityRegistryItem, AdminPageSetting, AdminAuditLog, WorkspaceGroup } from "./roadmapTypes";
+import { dbRoleForAppRole, normalizeAppRole } from "./auth";
 
 const isDev = process.env.NODE_ENV === "development";
 let localTasks: RoadmapTask[] = isDev ? [...MOCK_TASKS] : [];
@@ -36,13 +37,11 @@ export async function getProfiles(): Promise<Profile[]> {
 // Workspace Groups
 // ---------------------------------------------------------------------------
 const FALLBACK_WS: WorkspaceGroup[] = [
-  { id: "ws1", slug: "endoscribe-core-template-engine", title: "EndoScribe Core / Template Engine", description: "Ambient AI scribe, template authoring, procedure documentation, speech-to-structure pipeline.", icon: "FileText", order_index: 10, is_visible: true, is_system: true },
-  { id: "ws2", slug: "peprisc-model-integration", title: "PEPRisc Model & Integration", description: "Post-ERCP pancreatitis risk prediction model, variable extraction, and clinical integration.", icon: "BarChart", order_index: 20, is_visible: true, is_system: true },
-  { id: "ws3", slug: "validation-and-research", title: "Validation & Research", description: "Study design, validation cohort, evidence ladder, prospective trial, and publication pipeline.", icon: "FlaskConical", order_index: 30, is_visible: true, is_system: true },
-  { id: "ws4", slug: "hardware-audio-workflow", title: "Hardware / Audio / Workflow", description: "Audio capture hardware, microphone evaluation, procedural-room integration, and signal quality.", icon: "Mic", order_index: 40, is_visible: true, is_system: true },
-  { id: "ws5", slug: "irb-regulatory-compliance", title: "IRB / Regulatory / Compliance", description: "IRB protocol, FDA/CDS/SaMD strategy, data governance, and institutional compliance.", icon: "Shield", order_index: 50, is_visible: true, is_system: true },
-  { id: "ws6", slug: "platform-and-infrastructure", title: "Platform & Infrastructure", description: "Workspace OS web app, deployment, CI/CD, mobile shell, authentication, and DevOps.", icon: "Server", order_index: 60, is_visible: true, is_system: true },
-  { id: "ws7", slug: "project-management-ops", title: "Project Management & Ops", description: "Team coordination, meeting cadence, documentation, onboarding, and operational processes.", icon: "Users", order_index: 70, is_visible: true, is_system: true },
+  { id: "ws1", slug: "endoscribe-core", title: "EndoScribe Core", description: "Ambient AI scribe, procedure documentation, speech-to-structure.", icon: "FileText", order_index: 10, is_visible: true, is_system: true },
+  { id: "ws2", slug: "peprisc", title: "PEPRisc", description: "Post-ERCP pancreatitis risk prediction and model integration.", icon: "BarChart", order_index: 20, is_visible: true, is_system: true },
+  { id: "ws3", slug: "hardware-workflow", title: "Hardware / Workflow", description: "Audio capture, microphones, procedural-room workflow.", icon: "Settings", order_index: 30, is_visible: true, is_system: true },
+  { id: "ws4", slug: "irb-fda-translation", title: "IRB, FDA & Translation", description: "IRB, FDA/CDS/SaMD, JHTV, compliance, and commercialization.", icon: "Shield", order_index: 40, is_visible: true, is_system: true },
+  { id: "ws5", slug: "research-study-trial", title: "Research Study / Prospective Trial", description: "Study design, validation cohort, outcomes, publication.", icon: "FlaskConical", order_index: 50, is_visible: true, is_system: true },
 ];
 
 export async function getWorkspaceGroups(): Promise<WorkspaceGroup[]> {
@@ -92,11 +91,9 @@ export async function getWorkstreams(): Promise<Workstream[]> {
 // ---------------------------------------------------------------------------
 // Tasks — CRUD
 // ---------------------------------------------------------------------------
-export async function getTasks(includeArchived = false): Promise<RoadmapTask[]> {
-  if (!live()) return includeArchived ? localTasks : localTasks.filter(t => !t.is_archived);
-  let q = sb()!.from("tasks").select("*").order("id");
-  if (!includeArchived) q = q.or("is_archived.is.null,is_archived.eq.false");
-  const { data, error } = await q;
+export async function getTasks(): Promise<RoadmapTask[]> {
+  if (!live()) return localTasks;
+  const { data, error } = await sb()!.from("tasks").select("*").order("id");
   if (error) { console.error(error); return localTasks; }
   return data as RoadmapTask[];
 }
@@ -644,6 +641,8 @@ export async function moveTaskBetweenDashboards(taskId: string, fromDashboardId:
 // Admin Entity Registry + Page Settings
 // ---------------------------------------------------------------------------
 const MOCK_ENTITY_REGISTRY: AdminEntityRegistryItem[] = isDev ? [
+  { id: "m0", slug: "tasks", label: "Task", plural_label: "Tasks", description: "Editable execution tasks", entity_type: "tasks", table_name: "tasks", icon: "ListChecks", category: "Core", order_index: 5, is_visible: true, is_system: true, required_role: "admin", allow_create: true, allow_edit: true, allow_delete: true, allow_reorder: false, allow_archive: true, show_count: true, empty_state_title: "", empty_state_description: "", config: {} },
+  { id: "m0b", slug: "workspace-groups", label: "Workspace", plural_label: "Workspaces", description: "Workspace verticals", entity_type: "workspace_groups", table_name: "workspace_groups", icon: "Briefcase", category: "Core", order_index: 8, is_visible: true, is_system: true, required_role: "admin", allow_create: true, allow_edit: true, allow_delete: true, allow_reorder: true, allow_archive: false, show_count: true, empty_state_title: "", empty_state_description: "", config: {} },
   { id: "m1", slug: "workstreams", label: "Workstream", plural_label: "Workstreams", description: "Strategic workstreams", entity_type: "workstreams", table_name: "workstreams", icon: "Layers", category: "Core", order_index: 10, is_visible: true, is_system: true, required_role: "admin", allow_create: true, allow_edit: true, allow_delete: true, allow_reorder: true, allow_archive: true, show_count: true, empty_state_title: "", empty_state_description: "", config: {} },
   { id: "m2", slug: "milestones", label: "Milestone", plural_label: "Milestones", description: "Roadmap milestones", entity_type: "milestones", table_name: "milestones", icon: "Target", category: "Core", order_index: 20, is_visible: true, is_system: true, required_role: "admin", allow_create: true, allow_edit: true, allow_delete: true, allow_reorder: false, allow_archive: false, show_count: true, empty_state_title: "", empty_state_description: "", config: {} },
   { id: "m3", slug: "risks", label: "Risk", plural_label: "Risks", description: "Risk register", entity_type: "risks", table_name: "risks", icon: "AlertTriangle", category: "Core", order_index: 30, is_visible: true, is_system: true, required_role: "admin", allow_create: true, allow_edit: true, allow_delete: true, allow_reorder: false, allow_archive: false, show_count: true, empty_state_title: "", empty_state_description: "", config: {} },
@@ -735,16 +734,16 @@ export async function getAuditLogs(limit = 200): Promise<AdminAuditLog[]> {
 export async function updateProfileRole(profileId: string, newRole: string): Promise<Profile> {
   if (!live()) throw new Error("Supabase not configured.");
   const client = sb()!;
+  const appRole = normalizeAppRole(newRole);
+  const dbRole = dbRoleForAppRole(newRole);
   // Get current profile for audit
   const { data: prev } = await client.from("profiles").select("*").eq("id", profileId).single();
-  // Map role to app_role: admin → admin, editor/viewer → user
-  const appRole = newRole === "admin" ? "admin" : "user";
-  const { data, error } = await client.from("profiles").update({ role: newRole, app_role: appRole }).eq("id", profileId).select().single();
+  const { data, error } = await client.from("profiles").update({ role: dbRole, app_role: appRole }).eq("id", profileId).select().single();
   if (error) throw new Error(error.message.includes("policy") ? "Permission denied. Admin role required to change user roles." : error.message);
   await createAuditLog({
     action: "role_changed", entity_type: "profile", entity_id: profileId,
-    entity_label: data.email, previous_value: prev ? { role: prev.role, app_role: prev.app_role } : null,
-    new_value: { role: newRole, app_role: appRole },
+    entity_label: data.email, previous_value: prev ? { role: prev.role } : null,
+    new_value: { role: dbRole, app_role: appRole },
   });
   return data as Profile;
 }

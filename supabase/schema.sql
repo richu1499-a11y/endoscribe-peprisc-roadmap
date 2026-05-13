@@ -21,6 +21,12 @@ create table if not exists profiles (
   email      text,
   full_name  text,
   role       text not null default 'viewer' check (role in ('admin','editor','viewer')),
+  app_role   text not null default 'user',
+  is_protected_admin boolean not null default false,
+  is_active boolean not null default true,
+  display_name text,
+  deactivated_at timestamptz,
+  deactivated_by uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -169,9 +175,6 @@ alter table activity_log enable row level security;
 create policy "Anyone authenticated can read profiles"
   on profiles for select to authenticated using (true);
 
-create policy "Users can update own profile"
-  on profiles for update to authenticated using (auth.uid() = id);
-
 -- Workstreams: authenticated can read; admins/editors can modify
 create policy "Authenticated can read workstreams"
   on workstreams for select to authenticated using (true);
@@ -246,12 +249,14 @@ language plpgsql
 security definer set search_path = ''
 as $$
 begin
-  insert into public.profiles (id, email, full_name, role)
+  insert into public.profiles (id, email, full_name, role, app_role, is_active)
   values (
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data ->> 'full_name', ''),
-    'viewer'
+    'viewer',
+    'user',
+    true
   );
   return new;
 end;
@@ -305,10 +310,13 @@ alter table task_assignments enable row level security;
 create policy "Authenticated can read task_assignments"
   on task_assignments for select to authenticated using (true);
 
-create policy "Admins can manage task_assignments"
+create policy "Editors can manage task_assignments"
   on task_assignments for all to authenticated
   using (
-    exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin')
+    exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role in ('admin','editor') and coalesce(profiles.is_active, true) = true)
+  )
+  with check (
+    exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role in ('admin','editor') and coalesce(profiles.is_active, true) = true)
   );
 
 -- ============================================================
@@ -692,6 +700,80 @@ create trigger user_invites_updated_at before update on user_invites for each ro
 alter table user_invites enable row level security;
 create policy "Admins can manage user_invites" on user_invites for all to authenticated
   using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'));
+
+create policy "Users can read own pending invite" on user_invites for select to authenticated
+  using (status = 'pending' and lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
+
+create or replace function public.accept_user_invite(p_full_name text default '')
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  invite_row user_invites%rowtype;
+  current_email text;
+  normalized_app_role text;
+  normalized_db_role text;
+begin
+  if auth.uid() is null then
+    return false;
+  end if;
+
+  current_email := lower(coalesce(auth.jwt() ->> 'email', ''));
+  if current_email = '' then
+    return false;
+  end if;
+
+  select *
+    into invite_row
+    from user_invites
+   where lower(email) = current_email
+     and status = 'pending'
+     and (expires_at is null or expires_at > now())
+   order by invited_at desc
+   limit 1;
+
+  if not found then
+    return false;
+  end if;
+
+  normalized_app_role := case when invite_row.app_role = 'admin' then 'admin' else 'user' end;
+  normalized_db_role := case when normalized_app_role = 'admin' then 'admin' else 'editor' end;
+
+  insert into profiles (id, email, full_name, role, app_role, is_active)
+  values (auth.uid(), current_email, coalesce(nullif(p_full_name, ''), current_email), normalized_db_role, normalized_app_role, true)
+  on conflict (id) do update
+    set email = excluded.email,
+        full_name = coalesce(nullif(excluded.full_name, ''), profiles.full_name),
+        role = excluded.role,
+        app_role = excluded.app_role,
+        is_active = true,
+        deactivated_at = null;
+
+  update user_invites
+     set status = 'accepted',
+         accepted_by = auth.uid(),
+         accepted_at = now()
+   where id = invite_row.id;
+
+  insert into admin_audit_log (actor_id, actor_email, action, entity_type, entity_id, entity_label, new_value)
+  values (
+    auth.uid(),
+    current_email,
+    'invite_accepted',
+    'user_invite',
+    invite_row.id::text,
+    invite_row.email,
+    jsonb_build_object('app_role', normalized_app_role, 'role', normalized_db_role)
+  );
+
+  return true;
+end;
+$$;
+
+revoke all on function public.accept_user_invite(text) from public;
+grant execute on function public.accept_user_invite(text) to authenticated;
 
 -- ============================================================
 -- Enable Supabase Realtime for tasks table

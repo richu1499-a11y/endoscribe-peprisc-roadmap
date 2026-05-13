@@ -19,16 +19,16 @@ export default function UserMenu() {
     sb.auth.getUser().then(({ data: { user: u } }) => {
       setUser(u);
       if (u) {
-        sb.from("profiles").select("role").eq("id", u.id).single()
-          .then(({ data }) => setRole(data?.role ?? null));
+        sb.from("profiles").select("role, app_role").eq("id", u.id).single()
+          .then(({ data }) => setRole(data?.app_role === "admin" || data?.role === "admin" ? "admin" : "user"));
       }
     });
 
     const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        sb.from("profiles").select("role").eq("id", session.user.id).single()
-          .then(({ data }) => setRole(data?.role ?? null));
+        sb.from("profiles").select("role, app_role").eq("id", session.user.id).single()
+          .then(({ data }) => setRole(data?.app_role === "admin" || data?.role === "admin" ? "admin" : "user"));
       } else {
         setRole(null);
       }
@@ -38,12 +38,12 @@ export default function UserMenu() {
   }, []);
 
   if (!isSupabaseConfigured) {
-    return <span className="text-xs text-slate-400">Demo mode</span>;
+    return <span className="text-xs text-[var(--subtle)]">Demo mode</span>;
   }
 
   if (!user) {
     return (
-      <Link href="/login" className="flex items-center gap-1 text-xs text-indigo-600 hover:underline">
+      <Link href="/login" className="flex items-center gap-1 text-xs text-[var(--accent-strong)] hover:underline">
         <LogIn className="h-3.5 w-3.5" /> Sign in
       </Link>
     );
@@ -51,12 +51,12 @@ export default function UserMenu() {
 
   return (
     <div className="flex items-center gap-3">
-      <Link href="/account" className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900">
+      <Link href="/account" className="flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--text)]">
         <User className="h-3.5 w-3.5" />
         <span className="max-w-[140px] truncate">{user.email}</span>
-        {role && <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700">{role}</span>}
+        {role && <span className="rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent-strong)]">{role}</span>}
       </Link>
-      <button onClick={async () => { await signOut(); window.location.href = "/"; }} className="flex items-center gap-1 text-xs text-slate-500 hover:text-red-600">
+      <button onClick={async () => { await signOut(); window.location.href = "/"; }} className="flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--rose)]">
         <LogOut className="h-3.5 w-3.5" />
       </button>
     </div>

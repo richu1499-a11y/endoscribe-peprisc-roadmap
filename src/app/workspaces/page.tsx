@@ -1,39 +1,28 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getTasks, getProfiles, getTaskAssignments, getTasksWithAssignees, getWorkspaceGroups, createWorkspaceGroup, updateWorkspaceGroup, deleteWorkspaceGroup } from "@/lib/roadmapStore";
-import { getCurrentUser, getCurrentRole, canEdit as checkCanEdit } from "@/lib/auth";
+import { getTasks, getProfiles, getTaskAssignments, getTasksWithAssignees, createTask, updateTask, getWorkspaceGroups, createWorkspaceGroup, updateWorkspaceGroup, deleteWorkspaceGroup, replaceTaskAssignees } from "@/lib/roadmapStore";
+import { getCurrentUser, getCurrentAppRole } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
-import type { TaskWithAssignees, WorkspaceGroup } from "@/lib/roadmapTypes";
+import type { TaskAssignment, TaskWithAssignees, Profile, WorkspaceGroup, RoadmapTask } from "@/lib/roadmapTypes";
+import TaskTable from "@/components/TaskTable";
+import TaskForm from "@/components/TaskForm";
+import { Plus, X, Settings2, ArrowLeft } from "lucide-react";
 import { clsx } from "clsx";
-import { Plus, Settings2, X, Trash2, Pencil } from "lucide-react";
-
-const WS_COLORS: Record<string, string> = {
-  "endoscribe-core-template-engine": "#0d9488",
-  "voice-asr-room-workflow": "#f59e0b",
-  "peprisc-prediction-models": "#8b5cf6",
-  "recommendation-engine": "#ec4899",
-  "analytics-quality": "#14b8a6",
-  "infrastructure-deployment-strategy": "#06b6d4",
-  "validation-regulatory-translation": "#ef4444",
-};
-
-const WS_SCOPE: Record<string, string[]> = {
-  "endoscribe-core-template-engine": ["ERCP, EUS, and colonoscopy template refinement", "Template coverage expansion", "Multi-agentic / adaptive template framework", "Clinician dictation and note workflow", "Patient-identifier masking and transcript safety"],
-  "voice-asr-room-workflow": ["Med ASR evaluation and model comparison", "Phone vs operating-room microphone testing", "Multi-speaker / diarization handling", "Relevant-speech capture", "ASR hosting and latency considerations"],
-  "peprisc-prediction-models": ["Hands-free PEPRisc calculation", "Real-time or trigger-based workflow", "PEPRisc ground-truth comparison", "Prediction-model drift monitoring", "Future prediction models beyond PEPRisc"],
-  "recommendation-engine": ["Refine existing recommendation logics", "Recommendation engine expansion", "Guideline-update strategy", "Recommendation validation", "MVP recommendation set"],
-  "analytics-quality": ["EndoScribe KPIs and quality metrics", "Provider-level analytics framework", "Facility-level analytics framework", "Dashboard/reporting requirements", "Future benchmarking concepts"],
-  "infrastructure-deployment-strategy": ["Systems architecture and data-flow diagram", "MVP and long-term deployment strategy", "Hopkins/DSAI compute and GPU strategy", "Database and queue architecture", "CI/CD pipeline and federated learning"],
-  "validation-regulatory-translation": ["EndoScribe and PEPRisc prospective validation", "IRB amendment and ASGE protocol alignment", "Non-interventional / shadow-mode study design", "FDA Pre-Sub preparation", "Regulatory question list"],
-};
 
 export default function WorkspacesPage() {
   const [workspaces, setWorkspaces] = useState<WorkspaceGroup[]>([]);
   const [tasks, setTasks] = useState<TaskWithAssignees[]>([]);
-  const [userCanEdit, setUserCanEdit] = useState(false);
-  const [manageMode, setManageMode] = useState(false);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [assignments, setAssignments] = useState<TaskAssignment[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [selectedWs, setSelectedWs] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "mine" | "overdue" | "done">("all");
+  const [showAdd, setShowAdd] = useState(false);
+  const [showManage, setShowManage] = useState(false);
   const [editingWs, setEditingWs] = useState<WorkspaceGroup | null | "new">(null);
+  const [editingTask, setEditingTask] = useState<RoadmapTask | null | "new">(null);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -41,18 +30,37 @@ export default function WorkspacesPage() {
 
   const refresh = useCallback(async () => {
     const [rawTasks, profs, assigns, ws] = await Promise.all([getTasks(), getProfiles(), getTaskAssignments(), getWorkspaceGroups()]);
-    setTasks(await getTasksWithAssignees(rawTasks, assigns, profs));
+    const enriched = await getTasksWithAssignees(rawTasks, assigns, profs);
+    setTasks(enriched.filter(t => !t.is_archived));
+    setProfiles(profs);
+    setAssignments(assigns);
     setWorkspaces(ws.filter(w => w.is_visible));
     if (isSupabaseConfigured) {
-      const role = await getCurrentRole();
-      setUserCanEdit(checkCanEdit(role));
+      const [user, appRole] = await Promise.all([getCurrentUser(), getCurrentAppRole()]);
+      setCurrentUserId(user?.id ?? null);
+      setIsAdmin(appRole === "admin");
     }
   }, []);
 
   useEffect(() => { const init = async () => { await refresh(); }; init(); }, [refresh]);
 
   const [now] = useState(() => new Date().toISOString().slice(0, 10));
-  const activeTasks = tasks.filter(t => t.status !== "Complete" && t.status !== "Deferred");
+  const wsTasks = selectedWs ? tasks.filter(t => t.workspace === selectedWs) : [];
+  let filtered = wsTasks;
+  if (filter === "mine") filtered = wsTasks.filter(t => currentUserId && t.assignees.some(a => a.id === currentUserId));
+  if (filter === "overdue") filtered = wsTasks.filter(t => t.target_date && t.target_date < now && t.status !== "Complete");
+  if (filter === "done") filtered = wsTasks.filter(t => t.status === "Complete");
+
+  async function handleQuickAdd(title: string, ws: string) {
+    setError(null);
+    try {
+      const id = `TASK-${Date.now().toString(36).toUpperCase()}`;
+      await createTask({ id, title, description: "", workstream_id: "", owner: "", contributors: [], status: "Not started", priority: "Medium", start_date: null, target_date: null, dependencies: [], deliverables: [], blockers: [], risks: [], decision_needed: "", regulatory_relevance: "None", hipaa_relevance: "None", evidence_stage: "Concept", gsd_goal: "", next_action: "", notes: "", workspace: ws } as RoadmapTask);
+      setShowAdd(false);
+      showFb("Task created");
+      await refresh();
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : "Failed"); }
+  }
 
   async function handleSaveWs(form: Partial<WorkspaceGroup>) {
     setError(null);
@@ -73,7 +81,7 @@ export default function WorkspacesPage() {
   async function handleDeleteWs(ws: WorkspaceGroup) {
     const wsTaskCount = tasks.filter(t => t.workspace === ws.slug).length;
     const msg = wsTaskCount > 0
-      ? `"${ws.title}" has ${wsTaskCount} task(s). Tasks will keep their workspace tag but this workspace card will be removed. Continue?`
+      ? `"${ws.title}" has ${wsTaskCount} task(s). Tasks will keep their workspace tag but this workspace will be removed. Continue?`
       : `Delete workspace "${ws.title}"?`;
     if (!confirm(msg)) return;
     try {
@@ -83,108 +91,206 @@ export default function WorkspacesPage() {
     } catch (err: unknown) { setError(err instanceof Error ? err.message : "Failed"); }
   }
 
+  async function handleTaskSave(task: RoadmapTask, assigneeIds?: string[]) {
+    setError(null);
+    try {
+      let savedTaskId = task.id;
+      if (editingTask === "new") {
+        const id = task.id || `TASK-${Date.now().toString(36).toUpperCase()}`;
+        savedTaskId = id;
+        await createTask({ ...task, id, workspace: selectedWs ?? task.workspace } as RoadmapTask);
+        showFb("Task created");
+      } else {
+        await updateTask(task.id, task);
+        showFb("Task updated");
+      }
+      if (assigneeIds !== undefined) await replaceTaskAssignees(savedTaskId, assigneeIds);
+      setEditingTask(null);
+      await refresh();
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : "Failed"); }
+  }
+
+  const filterCls = (f: string) => clsx("px-3 py-1 text-xs rounded-full transition-colors", filter === f ? "bg-[var(--accent)] text-white" : "border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:bg-[var(--surface-strong)]");
+  const editingAssigneeIds = editingTask && editingTask !== "new" ? assignments.filter(a => a.task_id === editingTask.id).map(a => a.user_id) : [];
+
+  // ========== Workspace cards view ==========
+  if (!selectedWs) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase text-[var(--accent-strong)]">Verticals</p>
+            <h1 className="text-3xl font-semibold text-[var(--text)]">Workspaces</h1>
+            <p className="mt-1 text-sm text-[var(--muted)]">Broad execution lanes for the project.</p>
+          </div>
+          {isAdmin && (
+            <div className="flex gap-2">
+              <button onClick={() => setShowManage(!showManage)} className={clsx("flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors", showManage ? "app-button-primary" : "border border-[var(--border)] text-[var(--muted)] hover:bg-[var(--surface-strong)]")}>
+                <Settings2 className="h-4 w-4" /> Manage
+              </button>
+              {showManage && (
+                <button onClick={() => setEditingWs("new")} className="app-button-primary flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium">
+                  <Plus className="h-4 w-4" /> New Workspace
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">{error}</div>}
+        {feedback && <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-900/60 dark:bg-green-950/40 dark:text-green-200">{feedback}</div>}
+
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {workspaces.map(ws => {
+            const count = tasks.filter(t => t.workspace === ws.slug).length;
+            const overdue = tasks.filter(t => t.workspace === ws.slug && t.target_date && t.target_date < now && t.status !== "Complete").length;
+            const myCount = currentUserId ? tasks.filter(t => t.workspace === ws.slug && t.assignees.some(a => a.id === currentUserId)).length : 0;
+            const done = tasks.filter(t => t.workspace === ws.slug && t.status === "Complete").length;
+            const progress = count === 0 ? 0 : Math.round((done / count) * 100);
+            return (
+              <div key={ws.slug} className="app-card group rounded-xl p-6 transition hover:-translate-y-0.5 hover:border-[var(--accent)]">
+                <div className="flex justify-between items-start">
+                  <button onClick={() => setSelectedWs(ws.slug)} className="text-left flex-1">
+                    <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-lg font-semibold text-[var(--accent-strong)]">{ws.title.slice(0, 1)}</span>
+                    <h3 className="text-lg font-semibold text-[var(--text)]">{ws.title}</h3>
+                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--muted)]">{ws.description}</p>
+                  </button>
+                  {showManage && isAdmin && (
+                    <div className="flex gap-1 ml-2 shrink-0">
+                      <button onClick={() => setEditingWs(ws)} className="text-xs text-[var(--accent-strong)] hover:underline">Edit</button>
+                      {!ws.is_system && <button onClick={() => handleDeleteWs(ws)} className="text-xs text-[var(--rose)] hover:underline">Delete</button>}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => setSelectedWs(ws.slug)} className="w-full text-left">
+                  <div className="mt-6 flex gap-3 text-xs text-[var(--muted)]">
+                    <span>{count} task{count !== 1 ? "s" : ""}</span>
+                    {myCount > 0 && <span className="text-[var(--accent-strong)]">{myCount} mine</span>}
+                    {overdue > 0 && <span className="text-[var(--rose)]">{overdue} overdue</span>}
+                  </div>
+                  <div className="mt-4 h-1.5 rounded-full bg-[var(--surface-strong)]">
+                    <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${progress}%` }} />
+                  </div>
+                </button>
+              </div>
+            );
+          })}
+
+          {workspaces.length === 0 && (
+            <div className="col-span-full rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-10 text-center">
+              <p className="text-sm text-[var(--muted)]">No workspaces yet.</p>
+              {isAdmin && <button onClick={() => setEditingWs("new")} className="mt-2 text-sm text-[var(--accent-strong)] hover:underline">Create your first workspace</button>}
+            </div>
+          )}
+        </div>
+
+        {/* Workspace edit modal */}
+        {editingWs && <WorkspaceFormModal ws={editingWs === "new" ? null : editingWs} onSave={handleSaveWs} onCancel={() => setEditingWs(null)} />}
+      </div>
+    );
+  }
+
+  // ========== Workspace detail view ==========
+  const ws = workspaces.find(w => w.slug === selectedWs);
+
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
+    <div className="mx-auto max-w-7xl space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Workspaces</h1>
-          <p className="text-base text-slate-500 mt-2">{workspaces.length} strategic verticals &middot; {activeTasks.length} active tasks</p>
+          <button onClick={() => { setSelectedWs(null); setFilter("all"); }} className="mb-2 flex items-center gap-1 text-xs text-[var(--accent-strong)] hover:underline">
+            <ArrowLeft className="h-3 w-3" /> All Workspaces
+          </button>
+          <h1 className="text-3xl font-semibold text-[var(--text)]">{ws?.title ?? selectedWs}</h1>
+          {ws?.description && <p className="mt-1 text-sm text-[var(--muted)]">{ws.description}</p>}
         </div>
-        {userCanEdit && (
-          <div className="flex gap-2">
-            <button onClick={() => setManageMode(!manageMode)} className={clsx("flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors", manageMode ? "bg-teal-600 text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50")}>
-              <Settings2 className="h-4 w-4" /> {manageMode ? "Done" : "Manage"}
-            </button>
-            {manageMode && (
-              <button onClick={() => setEditingWs("new")} className="flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700">
-                <Plus className="h-4 w-4" /> New Workspace
-              </button>
-            )}
+        <div className="flex gap-2">
+          <button onClick={() => setEditingTask("new")} className="app-button-primary flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium">
+            <Plus className="h-4 w-4" /> New Task
+          </button>
+        </div>
+      </div>
+
+      {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">{error}</div>}
+      {feedback && <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-900/60 dark:bg-green-950/40 dark:text-green-200">{feedback}</div>}
+
+      <div className="flex gap-2">
+        <button className={filterCls("all")} onClick={() => setFilter("all")}>All ({wsTasks.length})</button>
+        <button className={filterCls("mine")} onClick={() => setFilter("mine")}>Mine</button>
+        <button className={filterCls("overdue")} onClick={() => setFilter("overdue")}>Overdue</button>
+        <button className={filterCls("done")} onClick={() => setFilter("done")}>Done</button>
+      </div>
+
+      <TaskTable
+        tasks={filtered}
+        profiles={profiles}
+        onSelect={t => setEditingTask(t)}
+        onUpdate={async (id, updates) => { try { await updateTask(id, updates); showFb("Updated"); await refresh(); } catch {} }}
+        onDelete={isAdmin ? async (id) => { if (confirm("Archive this task?")) { try { await updateTask(id, { is_archived: true } as Partial<RoadmapTask>); showFb("Archived"); await refresh(); } catch {} } } : undefined}
+        isAdmin={isAdmin}
+        compact
+        emptyMessage="No tasks in this workspace yet. Create one to get started."
+      />
+
+      {/* Quick add */}
+      {showAdd && <QuickAddModal workspace={selectedWs} onSave={handleQuickAdd} onCancel={() => setShowAdd(false)} />}
+
+      {/* Full task edit */}
+      {editingTask && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-16">
+          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl max-h-[85vh] overflow-y-auto">
+            <TaskForm
+              task={editingTask === "new" ? null : editingTask}
+              profiles={profiles}
+              currentAssigneeIds={editingAssigneeIds}
+              workspaces={workspaces.map(w => ({ slug: w.slug, title: w.title }))}
+              defaultWorkspace={selectedWs ?? undefined}
+              onSave={handleTaskSave}
+              onCancel={() => setEditingTask(null)}
+            />
           </div>
-        )}
-      </div>
-
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</div>}
-      {feedback && <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-sm text-green-700">{feedback}</div>}
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        {workspaces.map(ws => {
-          const wt = activeTasks.filter(t => t.workspace === ws.slug);
-          const high = wt.filter(t => t.priority === "Critical" || t.priority === "High").length;
-          const dueSoon = wt.filter(t => t.target_date && t.target_date >= now && t.target_date <= new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)).length;
-          const color = WS_COLORS[ws.slug] ?? "#64748b";
-          const scope = WS_SCOPE[ws.slug] ?? [];
-
-          return (
-            <div key={ws.slug} className="rounded-2xl border border-slate-200 bg-white p-7 hover:shadow-lg transition-all relative">
-              {/* Manage buttons */}
-              {manageMode && userCanEdit && (
-                <div className="absolute top-4 right-4 flex gap-1.5">
-                  <button onClick={() => setEditingWs(ws)} className="rounded-lg p-1.5 hover:bg-slate-100 text-slate-400 hover:text-teal-600" title="Edit">
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => handleDeleteWs(ws)} className="rounded-lg p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-600" title="Delete">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-
-              <div className="flex items-start gap-4">
-                <div className="h-3 w-3 rounded-full mt-2 shrink-0" style={{ backgroundColor: color }} />
-                <div className="flex-1">
-                  <h2 className="text-lg font-bold text-slate-900 leading-snug">{ws.title}</h2>
-                  <p className="text-sm text-slate-500 mt-1">{ws.description}</p>
-                </div>
-              </div>
-
-              {scope.length > 0 && (
-                <div className="mt-5 space-y-1.5">
-                  {scope.map((s, i) => (
-                    <div key={i} className="flex items-start gap-2 text-sm text-slate-600">
-                      <span className="text-slate-300 mt-0.5 shrink-0">&#x2022;</span>
-                      <span>{s}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-5 pt-4 border-t border-slate-100 flex gap-5 text-sm">
-                <div><span className="text-2xl font-bold text-slate-900">{wt.length}</span><span className="text-slate-500 ml-1.5">active</span></div>
-                {high > 0 && <div><span className="text-2xl font-bold text-amber-600">{high}</span><span className="text-slate-500 ml-1.5">high priority</span></div>}
-                {dueSoon > 0 && <div><span className="text-2xl font-bold text-teal-600">{dueSoon}</span><span className="text-slate-500 ml-1.5">due soon</span></div>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {workspaces.length === 0 && (
-        <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-16 text-center">
-          <p className="text-lg text-slate-500">No workspaces configured.</p>
-          {userCanEdit && <button onClick={() => setEditingWs("new")} className="mt-3 text-sm text-teal-600 hover:underline font-medium">Create your first workspace</button>}
         </div>
       )}
-
-      {editingWs && <WsFormModal ws={editingWs === "new" ? null : editingWs} onSave={handleSaveWs} onCancel={() => setEditingWs(null)} />}
     </div>
   );
 }
 
-function WsFormModal({ ws, onSave, onCancel }: { ws: WorkspaceGroup | null; onSave: (f: Partial<WorkspaceGroup>) => void; onCancel: () => void }) {
+// ========== Workspace form modal ==========
+function WorkspaceFormModal({ ws, onSave, onCancel }: { ws: WorkspaceGroup | null; onSave: (form: Partial<WorkspaceGroup>) => void; onCancel: () => void }) {
   const isNew = !ws;
   const [title, setTitle] = useState(ws?.title ?? "");
   const [description, setDescription] = useState(ws?.description ?? "");
-  const c = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-400 focus:outline-none";
+  const c = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none";
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-24">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
         <div className="flex justify-between mb-4"><h3 className="text-lg font-semibold text-slate-800">{isNew ? "New Workspace" : "Edit Workspace"}</h3><button onClick={onCancel}><X className="h-4 w-4 text-slate-400" /></button></div>
         <form onSubmit={e => { e.preventDefault(); if (title.trim()) onSave({ title: title.trim(), description: description.trim() }); }} className="space-y-3">
           <div><label className="block text-xs font-medium text-slate-600 mb-1">Name *</label><input className={c} value={title} onChange={e => setTitle(e.target.value)} placeholder="Workspace name" autoFocus required /></div>
-          <div><label className="block text-xs font-medium text-slate-600 mb-1">Description</label><textarea className={c + " h-20"} value={description} onChange={e => setDescription(e.target.value)} placeholder="What is this workspace for?" /></div>
-          <div className="flex justify-end gap-3 pt-2">
+          <div><label className="block text-xs font-medium text-slate-600 mb-1">Description</label><textarea className={c + " h-16"} value={description} onChange={e => setDescription(e.target.value)} placeholder="What is this workspace for?" /></div>
+          <div className="flex justify-end gap-3 pt-1">
             <button type="button" onClick={onCancel} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600">Cancel</button>
-            <button type="submit" className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white">{isNew ? "Create" : "Save"}</button>
+            <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white">{isNew ? "Create" : "Save"}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ========== Quick add modal ==========
+function QuickAddModal({ workspace, onSave, onCancel }: { workspace: string; onSave: (title: string, ws: string) => void; onCancel: () => void }) {
+  const [title, setTitle] = useState("");
+  const c = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none";
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-24">
+      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+        <div className="flex justify-between mb-4"><h3 className="text-lg font-semibold text-slate-800">New Task</h3><button onClick={onCancel}><X className="h-4 w-4 text-slate-400" /></button></div>
+        <form onSubmit={e => { e.preventDefault(); if (title.trim()) onSave(title.trim(), workspace); }} className="space-y-3">
+          <div><label className="block text-xs font-medium text-slate-600 mb-1">Task name</label><input className={c} value={title} onChange={e => setTitle(e.target.value)} placeholder="What needs to be done?" autoFocus required /></div>
+          <p className="text-xs text-slate-500">Workspace: <strong>{workspace}</strong></p>
+          <div className="flex justify-end gap-3 pt-1">
+            <button type="button" onClick={onCancel} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600">Cancel</button>
+            <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white">Create</button>
           </div>
         </form>
       </div>

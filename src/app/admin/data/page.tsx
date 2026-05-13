@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
+  getTasks, createTask, updateTask, deleteTask,
+  getWorkspaceGroups, createWorkspaceGroup, updateWorkspaceGroup, deleteWorkspaceGroup,
   getWorkstreams, createWorkstream, updateWorkstream, deleteWorkstream,
   getMilestones, createMilestone, updateMilestone, deleteMilestone,
   getRisks, createRisk, updateRisk, deleteRisk,
@@ -16,7 +18,7 @@ import {
 import { getCurrentRole, isAdmin as checkIsAdmin } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
 import type { AdminEntityRegistryItem, AdminPageSetting } from "@/lib/roadmapTypes";
-import { PRIORITIES, MILESTONE_STATUSES, RISK_STATUSES, RISK_SEVERITIES, DECISION_STATUSES, FUTURE_MODULE_STATUSES, FUTURE_MODULE_CATEGORIES, ADMIN_ENTITY_CATEGORIES, DASHBOARD_REQUIRED_ROLES } from "@/lib/roadmapTypes";
+import { PRIORITIES, TASK_STATUSES, REGULATORY_LEVELS, EVIDENCE_STAGES, MILESTONE_STATUSES, RISK_STATUSES, RISK_SEVERITIES, DECISION_STATUSES, FUTURE_MODULE_STATUSES, FUTURE_MODULE_CATEGORIES, ADMIN_ENTITY_CATEGORIES, DASHBOARD_REQUIRED_ROLES } from "@/lib/roadmapTypes";
 import StatusBadge from "@/components/StatusBadge";
 import ComplianceBanner from "@/components/ComplianceBanner";
 import { clsx } from "clsx";
@@ -32,6 +34,14 @@ type CRUD = { get: () => Promise<any[]>; create: (i: any) => Promise<any>; updat
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 const CRUD_MAP: Record<string, CRUD> = {
+  tasks: { get: getTasks, create: createTask, update: updateTask, del: deleteTask, getId: t => t.id, getTitle: t => t.title,
+    columns: [{ key: "id", label: "ID" }, { key: "title", label: "Title" }, { key: "workspace", label: "Workspace" }, { key: "priority", label: "Priority" }, { key: "status", label: "Status", render: (t: { status: string }) => <StatusBadge status={t.status} /> }, { key: "target_date", label: "Due" }],
+    formFields: [{ key: "id", label: "ID", type: "text" }, { key: "title", label: "Title", type: "text" }, { key: "description", label: "Description", type: "textarea" }, { key: "workstream_id", label: "Workstream ID", type: "text" }, { key: "workspace", label: "Workspace Slug", type: "text" }, { key: "owner", label: "Owner", type: "text" }, { key: "status", label: "Status", type: "select", options: TASK_STATUSES }, { key: "priority", label: "Priority", type: "select", options: PRIORITIES }, { key: "start_date", label: "Start Date", type: "date" }, { key: "target_date", label: "Due Date", type: "date" }, { key: "regulatory_relevance", label: "FDA Relevance", type: "select", options: REGULATORY_LEVELS }, { key: "hipaa_relevance", label: "HIPAA Relevance", type: "select", options: REGULATORY_LEVELS }, { key: "evidence_stage", label: "Evidence Stage", type: "select", options: EVIDENCE_STAGES }, { key: "next_action", label: "Next Action", type: "text" }, { key: "notes", label: "Notes", type: "textarea" }],
+    blank: () => ({ id: "", title: "", description: "", workstream_id: "", workspace: "", owner: "", contributors: [], status: "Not started", priority: "Medium", start_date: null, target_date: null, dependencies: [], deliverables: [], blockers: [], risks: [], decision_needed: "", regulatory_relevance: "None", hipaa_relevance: "None", evidence_stage: "Concept", gsd_goal: "", next_action: "", notes: "" }) },
+  workspace_groups: { get: getWorkspaceGroups, create: createWorkspaceGroup, update: updateWorkspaceGroup, del: deleteWorkspaceGroup, getId: w => w.id, getTitle: w => w.title,
+    columns: [{ key: "title", label: "Title" }, { key: "slug", label: "Slug" }, { key: "description", label: "Description" }, { key: "order_index", label: "Order" }],
+    formFields: [{ key: "title", label: "Title", type: "text" }, { key: "slug", label: "Slug", type: "text" }, { key: "description", label: "Description", type: "textarea" }, { key: "icon", label: "Icon", type: "text" }, { key: "order_index", label: "Order", type: "text" }],
+    blank: () => ({ title: "", slug: "", description: "", icon: "Briefcase", order_index: 100, is_visible: true }) },
   workstreams: { get: getWorkstreams, create: createWorkstream, update: updateWorkstream, del: deleteWorkstream, getId: w => w.id, getTitle: w => w.label,
     columns: [{ key: "id", label: "ID" }, { key: "label", label: "Label" }, { key: "purpose", label: "Purpose" }, { key: "status", label: "Status", render: (w: { status: string }) => <StatusBadge status={w.status ?? "active"} /> }],
     formFields: [{ key: "id", label: "ID", type: "text" }, { key: "label", label: "Label", type: "text" }, { key: "purpose", label: "Purpose", type: "textarea" }, { key: "owner", label: "Owner", type: "text" }, { key: "status", label: "Status", type: "text" }],

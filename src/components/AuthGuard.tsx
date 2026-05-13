@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getSupabaseBrowser, isSupabaseConfigured } from "@/lib/supabase/browser";
 import { createAuditLog } from "@/lib/roadmapStore";
+import { dbRoleForAppRole, normalizeAppRole } from "@/lib/auth";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/access-restricted", "/access-deactivated", "/pending-approval"];
 function isPublicPath(p: string) { return PUBLIC_PATHS.some(pub => p.startsWith(pub)); }
@@ -27,33 +28,43 @@ export default function AuthGuard({ children }: Props) {
       const { data: { user } } = await sb.auth.getUser();
       if (!user) { if (!cancelled) router.replace("/login"); return; }
 
+      const applyPendingInvite = async () => {
+        const fullName = user.user_metadata?.full_name ?? "";
+        const { data: accepted, error: rpcError } = await sb.rpc("accept_user_invite", { p_full_name: fullName });
+        if (!rpcError) return Boolean(accepted);
+
+        // Backward-compatible fallback for databases that have not run migration 015 yet.
+        const { data: invite } = await sb
+          .from("user_invites")
+          .select("*")
+          .eq("email", user.email)
+          .eq("status", "pending")
+          .maybeSingle();
+        if (!invite) return false;
+
+        const appRole = normalizeAppRole((invite as { app_role?: string }).app_role);
+        await sb.from("profiles").upsert({
+          id: user.id,
+          email: user.email,
+          role: dbRoleForAppRole(appRole),
+          app_role: appRole,
+          is_active: true,
+          full_name: fullName,
+        });
+        await sb.from("user_invites").update({
+          status: "accepted",
+          accepted_by: user.id,
+          accepted_at: new Date().toISOString(),
+        }).eq("id", (invite as { id: string }).id);
+        await createAuditLog({ action: "invite_accepted", entity_type: "user_invite", entity_id: (invite as { id: string }).id, entity_label: user.email ?? "" });
+        return true;
+      };
+
       const { data: profile } = await sb.from("profiles").select("*").eq("id", user.id).single();
       if (cancelled) return;
 
       if (!profile) {
-        // New user — check allowed_users first, then fall back to user_invites
-        const { data: allowed } = await sb.from("allowed_users").select("*").eq("email", user.email).single();
-
-        if (allowed && allowed.status === "active") {
-          // Pre-approved user: create profile with assigned role
-          const role = allowed.role === "admin" ? "admin" : allowed.role === "editor" ? "editor" : "viewer";
-          const appRole = allowed.role === "admin" ? "admin" : "user";
-          await sb.from("profiles").upsert({
-            id: user.id, email: user.email, role, app_role: appRole,
-            is_active: true, full_name: allowed.full_name || user.user_metadata?.full_name || "",
-          });
-          await sb.from("allowed_users").update({ accepted_at: new Date().toISOString(), last_seen_at: new Date().toISOString() }).eq("id", allowed.id);
-          await createAuditLog({ action: "allowed_user_accepted", entity_type: "allowed_users", entity_id: allowed.id, entity_label: user.email ?? "" });
-          setStatus("ok");
-          return;
-        }
-
-        // Fall back to user_invites (legacy)
-        const { data: invite } = await sb.from("user_invites").select("*").eq("email", user.email).eq("status", "pending").single();
-        if (invite) {
-          await sb.from("profiles").upsert({ id: user.id, email: user.email, role: invite.app_role === "admin" ? "admin" : "editor", app_role: invite.app_role, is_active: true, full_name: user.user_metadata?.full_name ?? "" });
-          await sb.from("user_invites").update({ status: "accepted", accepted_by: user.id, accepted_at: new Date().toISOString() }).eq("id", invite.id);
-          await createAuditLog({ action: "invite_accepted", entity_type: "user_invite", entity_id: invite.id, entity_label: user.email ?? "" });
+        if (await applyPendingInvite()) {
           setStatus("ok");
         } else {
           setStatus("done");
@@ -62,7 +73,7 @@ export default function AuthGuard({ children }: Props) {
         return;
       }
 
-      // Existing user — check if active
+      // Check if user is active
       const isActive = (profile as unknown as { is_active?: boolean }).is_active;
       if (isActive === false) {
         setStatus("done");
@@ -70,17 +81,13 @@ export default function AuthGuard({ children }: Props) {
         return;
       }
 
-      // Update last_seen on allowed_users if exists
-      if (user.email) {
-        sb.from("allowed_users").update({ last_seen_at: new Date().toISOString() }).eq("email", user.email).then(() => {});
-      }
-
-      // Check for pending invite that wasn't yet applied (legacy)
-      if (!profile.app_role || profile.app_role === "user") {
-        const { data: invite } = await sb.from("user_invites").select("*").eq("email", user.email).eq("status", "pending").single();
-        if (invite) {
-          await sb.from("profiles").update({ app_role: invite.app_role, role: invite.app_role === "admin" ? "admin" : "editor" }).eq("id", user.id);
-          await sb.from("user_invites").update({ status: "accepted", accepted_by: user.id, accepted_at: new Date().toISOString() }).eq("id", invite.id);
+      // Check for pending invite that wasn't yet applied
+      if (!profile.app_role || profile.role === "viewer") {
+        const accepted = await applyPendingInvite();
+        if (!accepted && profile.role === "viewer" && profile.app_role !== "admin") {
+          setStatus("done");
+          router.replace("/pending-approval");
+          return;
         }
       }
 
@@ -94,7 +101,7 @@ export default function AuthGuard({ children }: Props) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className="h-6 w-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="h-6 w-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="mt-3 text-xs text-slate-500">Loading...</p>
         </div>
       </div>
