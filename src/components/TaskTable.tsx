@@ -9,11 +9,13 @@ import ActionMenu from "./ActionMenu";
 import { clsx } from "clsx";
 
 const WORKSPACES = [
-  { slug: "endoscribe-core", title: "EndoScribe Core" },
-  { slug: "peprisc", title: "PEPRisc" },
-  { slug: "hardware-workflow", title: "Hardware / Workflow" },
-  { slug: "irb-fda-translation", title: "IRB, FDA & Translation" },
-  { slug: "research-study-trial", title: "Research Study" },
+  { slug: "endoscribe-core-template-engine", title: "EndoScribe Core / Template Engine" },
+  { slug: "peprisc-model-integration", title: "PEPRisc Model & Integration" },
+  { slug: "validation-and-research", title: "Validation & Research" },
+  { slug: "hardware-audio-workflow", title: "Hardware / Audio / Workflow" },
+  { slug: "irb-regulatory-compliance", title: "IRB / Regulatory / Compliance" },
+  { slug: "platform-and-infrastructure", title: "Platform & Infrastructure" },
+  { slug: "project-management-ops", title: "Project Management & Ops" },
 ];
 
 interface Props {
