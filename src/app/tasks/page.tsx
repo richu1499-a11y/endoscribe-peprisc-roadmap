@@ -1,291 +1,233 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { getWorkstreams, getTasks, createTask, updateTask, subscribeToTasks, getProfiles, getTaskAssignments, getTasksWithAssignees, replaceTaskAssignees } from "@/lib/roadmapStore";
-import { uniqueValues } from "@/lib/roadmapUtils";
-import type { RoadmapTask, Workstream, Profile, TaskAssignment, TaskWithAssignees } from "@/lib/roadmapTypes";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { getTasks, createTask, updateTask, subscribeToTasks, getProfiles, getTaskAssignments, getTasksWithAssignees, replaceTaskAssignees, getWorkspaceGroups } from "@/lib/roadmapStore";
+import type { RoadmapTask, Profile, TaskAssignment, TaskWithAssignees, WorkspaceGroup } from "@/lib/roadmapTypes";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
 import { getCurrentUser, getCurrentRole, canEdit as checkCanEdit, isAdmin as checkIsAdmin } from "@/lib/auth";
-import TaskTable from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
 import TaskDetailDrawer from "@/components/TaskDetailDrawer";
-import ComplianceBanner from "@/components/ComplianceBanner";
-import { Plus, Search, Radio } from "lucide-react";
-import Link from "next/link";
+import StatusBadge from "@/components/StatusBadge";
+import PriorityBadge from "@/components/PriorityBadge";
+import { Plus, Search } from "lucide-react";
 import { clsx } from "clsx";
 
-const isDev = process.env.NODE_ENV === "development";
-
-type TabKey = "my-tasks" | "my-week" | "all";
-
-function isInCurrentWeek(dateStr: string | null): boolean {
-  if (!dateStr) return false;
-  const d = new Date(dateStr + "T00:00:00");
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
-  return d >= startOfWeek && d <= endOfWeek;
-}
-
-function isActiveNow(t: RoadmapTask): boolean {
-  if (!t.start_date || !t.target_date) return false;
-  const today = new Date().toISOString().slice(0, 10);
-  return t.start_date <= today && t.target_date >= today;
-}
+type TabKey = "all" | "mine" | "high" | "due-soon" | "archived";
 
 export default function TasksPage() {
   const [allTasks, setAllTasks] = useState<TaskWithAssignees[]>([]);
-  const [workstreams, setWorkstreams] = useState<Workstream[]>([]);
+  const [archivedTasks, setArchivedTasks] = useState<TaskWithAssignees[]>([]);
+  const [workspaces, setWorkspaces] = useState<WorkspaceGroup[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [assignments, setAssignments] = useState<TaskAssignment[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>("all");
 
   const [search, setSearch] = useState("");
-  const [filterWs, setFilterWs] = useState("");
+  const [filterWorkspace, setFilterWorkspace] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
-  const [filterOwner, setFilterOwner] = useState("");
-  const [filterAssignee, setFilterAssignee] = useState("");
-  const [filterWorkspace, setFilterWorkspace] = useState("");
 
   const [selected, setSelected] = useState<RoadmapTask | TaskWithAssignees | null>(null);
   const [editing, setEditing] = useState<RoadmapTask | null | "new">(null);
-  const [userCanEdit, setUserCanEdit] = useState(!isSupabaseConfigured && isDev);
+  const [userCanEdit, setUserCanEdit] = useState(false);
   const [userIsAdmin, setUserIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const [rawTasks, profs, assigns] = await Promise.all([getTasks(), getProfiles(), getTaskAssignments()]);
+    const [rawTasks, profs, assigns, ws] = await Promise.all([getTasks(), getProfiles(), getTaskAssignments(), getWorkspaceGroups()]);
     setProfiles(profs);
     setAssignments(assigns);
+    setWorkspaces(ws.filter(w => w.is_visible));
     const enriched = await getTasksWithAssignees(rawTasks, assigns, profs);
     setAllTasks(enriched);
+    // Load archived separately for the archived tab
+    const { getTasks: getTasksFn } = await import("@/lib/roadmapStore");
+    const archived = await getTasksFn(true);
+    const archivedOnly = archived.filter(t => t.is_archived);
+    const enrichedArchived = await getTasksWithAssignees(archivedOnly, assigns, profs);
+    setArchivedTasks(enrichedArchived);
   }, []);
 
   useEffect(() => {
     (async () => {
-      setWorkstreams(await getWorkstreams());
       await refresh();
       if (isSupabaseConfigured) {
         const [role, user] = await Promise.all([getCurrentRole(), getCurrentUser()]);
         setUserCanEdit(checkCanEdit(role));
         setUserIsAdmin(checkIsAdmin(role));
         setCurrentUserId(user?.id ?? null);
-        if (user) setTab("my-tasks");
       }
     })();
     const sub = subscribeToTasks(async () => { await refresh(); });
     return () => sub.unsubscribe();
   }, [refresh]);
 
-  // Derived task sets
-  const myAssignedIds = new Set(assignments.filter(a => a.user_id === currentUserId).map(a => a.task_id));
-  const myTasks = allTasks.filter(t => myAssignedIds.has(t.id));
-  const myWeekTasks = myTasks.filter(t =>
-    isInCurrentWeek(t.target_date) || isActiveNow(t) || (t.status === "In progress")
-  );
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const twoWeeks = useMemo(() => new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10), []);
 
-  // Which source list for current tab
-  const baseTasks = tab === "my-tasks" ? myTasks : tab === "my-week" ? myWeekTasks : allTasks;
+  // Derived sets
+  const myAssignedIds = new Set(assignments.filter(a => a.user_id === currentUserId).map(a => a.task_id));
+  const myTasks = allTasks.filter(t => myAssignedIds.has(t.id) || (currentUserId && t.owner && t.owner.toLowerCase().includes("richu")));
+  const highPriority = allTasks.filter(t => t.priority === "Critical" || t.priority === "High");
+  const dueSoon = allTasks.filter(t => t.target_date && t.target_date >= today && t.target_date <= twoWeeks);
+
+  // Base for current tab
+  const baseTasks = tab === "mine" ? myTasks : tab === "high" ? highPriority : tab === "due-soon" ? dueSoon : tab === "archived" ? archivedTasks : allTasks;
 
   // Apply filters
   let filtered = baseTasks;
-  if (search) {
-    const q = search.toLowerCase();
-    filtered = filtered.filter(t =>
-      t.id.toLowerCase().includes(q) || t.title.toLowerCase().includes(q) || t.owner.toLowerCase().includes(q)
-    );
-  }
-  if (filterWs) filtered = filtered.filter(t => t.workstream_id === filterWs);
+  if (search) { const q = search.toLowerCase(); filtered = filtered.filter(t => t.title.toLowerCase().includes(q) || (t.owner ?? "").toLowerCase().includes(q)); }
+  if (filterWorkspace) filtered = filtered.filter(t => t.workspace === filterWorkspace);
   if (filterStatus) filtered = filtered.filter(t => t.status === filterStatus);
   if (filterPriority) filtered = filtered.filter(t => t.priority === filterPriority);
-  if (filterOwner) filtered = filtered.filter(t => t.owner === filterOwner);
-  if (filterAssignee) filtered = filtered.filter(t => t.assignees.some(p => p.id === filterAssignee));
-  if (filterWorkspace) filtered = filtered.filter(t => t.workspace === filterWorkspace);
 
-  function showFeedback(msg: string) { setFeedback(msg); setTimeout(() => setFeedback(null), 3000); }
+  function showFb(msg: string) { setFeedback(msg); setTimeout(() => setFeedback(null), 3000); }
 
   async function handleSave(task: RoadmapTask, assigneeIds?: string[]) {
     setError(null);
     try {
       if (editing === "new") {
-        await createTask(task);
-        showFeedback("Task created");
+        const id = task.id || `TASK-${Date.now().toString(36).toUpperCase()}`;
+        await createTask({ ...task, id } as RoadmapTask);
+        showFb("Task created");
       } else {
         await updateTask(task.id, task);
-        showFeedback("Task updated");
+        showFb("Task updated");
       }
-      if (assigneeIds !== undefined) {
-        await replaceTaskAssignees(task.id, assigneeIds);
-      }
+      if (assigneeIds !== undefined) await replaceTaskAssignees(task.id || "", assigneeIds);
       setEditing(null);
       await refresh();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Operation failed");
-    }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : "Failed"); }
   }
 
-  async function handleDelete(id: string) {
-    if (!userIsAdmin) return;
+  async function handleArchive(id: string) {
     if (!confirm("Archive this task?")) return;
-    setError(null);
     try {
       await updateTask(id, { is_archived: true } as Partial<RoadmapTask>);
       setSelected(null);
-      showFeedback("Task archived");
-      await refresh();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Archive failed");
-    }
-  }
-
-  async function handleDuplicate(task: RoadmapTask) {
-    setError(null);
-    try {
-      const newId = `TASK-${Date.now().toString(36).toUpperCase()}`;
-      await createTask({ ...task, id: newId, title: `${task.title} (Copy)`, status: "Not started", is_archived: false, is_seeded: false });
-      showFeedback("Task duplicated");
-      await refresh();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Duplicate failed");
-    }
-  }
-
-  async function handleMoveWorkspace(id: string, workspace: string) {
-    try {
-      await updateTask(id, { workspace } as Partial<RoadmapTask>);
-      showFeedback("Moved to workspace");
+      showFb("Task archived");
       await refresh();
     } catch {}
   }
 
-  async function handleBulkUpdate(ids: string[], updates: Partial<RoadmapTask>) {
-    setError(null);
-    try {
-      for (const id of ids) { await updateTask(id, updates); }
-      showFeedback(`${ids.length} task(s) updated`);
-      await refresh();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Bulk update failed");
-    }
-  }
-
-  const selectCls = "rounded border border-slate-300 px-2 py-1.5 text-xs text-slate-700 bg-white focus:border-indigo-400 focus:outline-none";
-  const tabCls = (key: TabKey) => clsx(
-    "px-4 py-2 text-sm font-medium rounded-t border-b-2 transition-colors",
-    tab === key ? "border-indigo-600 text-indigo-700 bg-white" : "border-transparent text-slate-500 hover:text-slate-700"
-  );
+  const selectCls = "rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm bg-white focus:border-teal-400 focus:outline-none";
+  const tabCls = (key: TabKey) => clsx("px-4 py-2.5 text-sm font-medium rounded-lg transition-colors", tab === key ? "bg-teal-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50");
 
   const editingTask = editing && editing !== "new" ? editing : null;
   const editingAssigneeIds = editingTask ? assignments.filter(a => a.task_id === editingTask.id).map(a => a.user_id) : [];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4">
+    <div className="mx-auto max-w-6xl space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">Tasks</h1>
-        <div className="flex items-center gap-3">
-          {isSupabaseConfigured && <span className="flex items-center gap-1 text-xs text-green-600"><Radio className="h-3 w-3" /> Live</span>}
-          {!isSupabaseConfigured && <span className="text-xs text-amber-600">Mock mode</span>}
-          {userCanEdit && (
-            <button onClick={() => setEditing("new")} className="flex items-center gap-1 rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-              <Plus className="h-4 w-4" /> Add Task
-            </button>
-          )}
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Tasks</h1>
+          <p className="text-sm text-slate-500 mt-1">{allTasks.length} active tasks across {workspaces.length} workspaces</p>
         </div>
+        {userCanEdit && (
+          <button onClick={() => setEditing("new")} className="flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700">
+            <Plus className="h-4 w-4" /> Add Task
+          </button>
+        )}
       </div>
 
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-      {feedback && <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{feedback}</div>}
-
-      {!isSupabaseConfigured && isDev && (
-        <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-          Mock demo mode. <Link href="/setup" className="underline">Configure Supabase</Link>
-        </div>
-      )}
+      {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</div>}
+      {feedback && <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-sm text-green-700">{feedback}</div>}
 
       {/* Tabs */}
-      {currentUserId && (
-        <div className="flex gap-1 border-b border-slate-200">
-          <button className={tabCls("my-tasks")} onClick={() => setTab("my-tasks")}>My Tasks ({myTasks.length})</button>
-          <button className={tabCls("my-week")} onClick={() => setTab("my-week")}>My Week ({myWeekTasks.length})</button>
-          <button className={tabCls("all")} onClick={() => setTab("all")}>All Tasks ({allTasks.length})</button>
-        </div>
-      )}
-
-      <ComplianceBanner />
+      <div className="flex flex-wrap gap-2">
+        <button className={tabCls("all")} onClick={() => setTab("all")}>All Tasks ({allTasks.length})</button>
+        {currentUserId && <button className={tabCls("mine")} onClick={() => setTab("mine")}>My Tasks ({myTasks.length})</button>}
+        <button className={tabCls("high")} onClick={() => setTab("high")}>High Priority ({highPriority.length})</button>
+        <button className={tabCls("due-soon")} onClick={() => setTab("due-soon")}>Due Soon ({dueSoon.length})</button>
+        {userIsAdmin && <button className={tabCls("archived")} onClick={() => setTab("archived")}>Archived ({archivedTasks.length})</button>}
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
-          <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-slate-400" />
-          <input className="rounded border border-slate-300 py-1.5 pl-7 pr-3 text-xs focus:border-indigo-400 focus:outline-none w-44" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
+          <Search className="absolute left-2.5 top-2 h-4 w-4 text-slate-400" />
+          <input className="rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-sm focus:border-teal-400 focus:outline-none w-48" placeholder="Search tasks..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className={selectCls} value={filterWs} onChange={e => setFilterWs(e.target.value)}>
-          <option value="">All Workstreams</option>
-          {workstreams.map(ws => <option key={ws.id} value={ws.id}>{ws.label}</option>)}
+        <select className={selectCls} value={filterWorkspace} onChange={e => setFilterWorkspace(e.target.value)}>
+          <option value="">All Workspaces</option>
+          {workspaces.map(w => <option key={w.slug} value={w.slug}>{w.title}</option>)}
         </select>
         <select className={selectCls} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
           <option value="">All Statuses</option>
-          {uniqueValues(allTasks, "status").map(v => <option key={v}>{v}</option>)}
+          <option>Not started</option>
+          <option>In progress</option>
+          <option>Blocked</option>
+          <option>Complete</option>
+          <option>Deferred</option>
         </select>
         <select className={selectCls} value={filterPriority} onChange={e => setFilterPriority(e.target.value)}>
           <option value="">All Priorities</option>
-          {uniqueValues(allTasks, "priority").map(v => <option key={v}>{v}</option>)}
-        </select>
-        <select className={selectCls} value={filterOwner} onChange={e => setFilterOwner(e.target.value)}>
-          <option value="">All Owners</option>
-          {uniqueValues(allTasks, "owner").map(v => <option key={v}>{v}</option>)}
-        </select>
-        {profiles.length > 0 && (
-          <select className={selectCls} value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)}>
-            <option value="">All Assignees</option>
-            {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name || p.email}</option>)}
-          </select>
-        )}
-        <select className={selectCls} value={filterWorkspace} onChange={e => setFilterWorkspace(e.target.value)}>
-          <option value="">All Workspaces</option>
-          {uniqueValues(allTasks, "workspace").map(v => <option key={v}>{v}</option>)}
+          <option>Critical</option>
+          <option>High</option>
+          <option>Medium</option>
+          <option>Low</option>
         </select>
       </div>
 
-      <p className="text-xs text-slate-500">{filtered.length} of {baseTasks.length} tasks</p>
+      <p className="text-xs text-slate-500">{filtered.length} task{filtered.length !== 1 ? "s" : ""}</p>
 
-      <TaskTable
-        tasks={filtered}
-        profiles={profiles}
-        onSelect={setSelected}
-        onUpdate={userCanEdit ? async (id, updates) => { try { await updateTask(id, updates); showFeedback("Updated"); await refresh(); } catch {} } : undefined}
-        onBulkUpdate={userCanEdit ? handleBulkUpdate : undefined}
-        onDelete={userIsAdmin ? handleDelete : undefined}
-        onDuplicate={userCanEdit ? handleDuplicate : undefined}
-        onMoveWorkspace={userCanEdit ? handleMoveWorkspace : undefined}
-        isAdmin={userIsAdmin}
-        emptyMessage="No tasks yet. Click + Add Task to create one."
-      />
+      {/* Task list */}
+      <div className="space-y-3">
+        {filtered.map(t => {
+          const owner = t.owner || (t.assignees.length > 0 ? (t.assignees[0].full_name || t.assignees[0].email) : "");
+          const borderColor = t.priority === "Critical" ? "border-l-red-500" : t.priority === "High" ? "border-l-amber-500" : t.status === "Blocked" ? "border-l-red-400" : "border-l-slate-200";
+          const wsTitle = workspaces.find(w => w.slug === t.workspace)?.title ?? t.workspace ?? "";
+          return (
+            <div key={t.id} onClick={() => setSelected(t)} className={clsx("rounded-xl border border-slate-200 border-l-4 bg-white px-5 py-4 hover:shadow-md transition-all cursor-pointer", borderColor)}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold text-slate-900">{t.title}</p>
+                  <div className="flex flex-wrap gap-3 mt-1.5 text-sm text-slate-500">
+                    {wsTitle && <span className="text-teal-600 font-medium">{wsTitle}</span>}
+                    {owner && <span>{owner}</span>}
+                    {t.target_date && <span>Due {t.target_date}</span>}
+                  </div>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <PriorityBadge priority={t.priority} />
+                  <StatusBadge status={t.status} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
+      {filtered.length === 0 && (
+        <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-16 text-center">
+          <p className="text-lg text-slate-500">{tab === "archived" ? "No archived tasks." : "No tasks match your filters."}</p>
+          {tab !== "archived" && userCanEdit && (
+            <button onClick={() => setEditing("new")} className="mt-3 text-sm text-teal-600 hover:underline font-medium">Create a task</button>
+          )}
+        </div>
+      )}
+
+      {/* Detail drawer */}
       {selected && !editing && (
         <TaskDetailDrawer
           task={selected}
           onClose={() => setSelected(null)}
           onEdit={userCanEdit ? (t => { setEditing(t); setSelected(null); }) : (() => {})}
-          onDuplicate={userCanEdit ? (t => { handleDuplicate(t); setSelected(null); }) : undefined}
-          onDelete={userIsAdmin ? handleDelete : undefined}
+          onDelete={userIsAdmin ? handleArchive : undefined}
           isAdmin={userIsAdmin}
         />
       )}
 
+      {/* Task form modal */}
       {editing && userCanEdit && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-16">
-          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl max-h-[85vh] overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl max-h-[85vh] overflow-y-auto">
             <TaskForm
               task={editing === "new" ? null : editing}
               profiles={profiles}
+              workspaces={workspaces.map(w => ({ slug: w.slug, title: w.title }))}
               currentAssigneeIds={editingAssigneeIds}
               onSave={handleSave}
               onCancel={() => setEditing(null)}
