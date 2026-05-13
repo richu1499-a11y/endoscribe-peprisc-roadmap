@@ -6,9 +6,9 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
-  Home, ListChecks, Briefcase, CalendarDays, BarChart3, Settings,
+  Home, Briefcase, CalendarDays, Settings,
   Users, Database, LayoutGrid, FileSearch, Wrench, ChevronDown, ChevronRight,
-  Network, Milestone,
+  Network,
 } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/browser";
 import { getCurrentRole, isAdmin as checkIsAdmin } from "@/lib/auth";
@@ -18,8 +18,7 @@ interface NavItem { href: string; label: string; icon: React.ComponentType<{ cla
 const NAV_MAIN: NavItem[] = [
   { href: "/",            label: "Home",        icon: Home },
   { href: "/workspaces",  label: "Workspaces",  icon: Briefcase },
-  { href: "/roadmap",     label: "Milestones",  icon: Milestone },
-  { href: "/network",     label: "Roadmap",     icon: Network },
+  { href: "/roadmap",     label: "Roadmap",     icon: Network },
   { href: "/calendar",    label: "Calendar",    icon: CalendarDays },
 ];
 

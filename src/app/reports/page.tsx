@@ -12,7 +12,6 @@ const REPORTS = [
 
 const ADVANCED = [
   { title: "Timeline / Gantt", description: "Interactive Gantt chart with filters and grouping.", icon: GanttChart, href: "/timeline" },
-  { title: "Roadmap Map", description: "Interactive 2D/3D dependency network of tasks and workstreams.", icon: Network, href: "/network" },
   { title: "FDA / Regulatory", description: "Regulatory strategy and intended use matrix.", icon: Shield, href: "/regulatory" },
   { title: "IRB / Compliance", description: "Data governance and institutional review.", icon: Lock, href: "/governance" },
   { title: "Validation Science", description: "Evidence ladder and metrics matrix.", icon: FlaskConical, href: "/validation" },
@@ -24,23 +23,23 @@ export default function ReportsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Reports</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Summaries, exports, and analysis.</p>
+        <h1 className="text-2xl font-bold text-slate-900">Reports</h1>
+        <p className="text-sm text-slate-500 mt-1">Summaries, exports, and analysis.</p>
       </div>
 
-      {/* Roadmap Map prominent entry */}
-      <Link href="/network" className="flex items-center gap-4 rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-white p-5 hover:shadow-md transition-all">
+      {/* Roadmap prominent entry */}
+      <Link href="/roadmap" className="flex items-center gap-4 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-white p-6 hover:shadow-lg transition-all">
         <Network className="h-8 w-8 text-indigo-600 shrink-0" />
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Roadmap Map</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Interactive 2D/3D dependency network showing workspaces, tasks, milestones, and relationships.</p>
+          <h2 className="text-lg font-semibold text-slate-900">Roadmap</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Executive overview, workspace board, and interactive dependency map.</p>
         </div>
       </Link>
 
       <section>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {REPORTS.map(r => (
-            <div key={r.title} className="rounded-xl border border-slate-200 bg-white p-5 opacity-60">
+            <div key={r.title} className="rounded-2xl border border-slate-200 bg-white p-6 opacity-60">
               <r.icon className="h-6 w-6 text-slate-400 mb-3" />
               <h3 className="text-base font-semibold text-slate-700">{r.title}</h3>
               <p className="mt-1 text-sm text-slate-500">{r.description}</p>
@@ -60,7 +59,7 @@ export default function ReportsPage() {
             <p className="text-xs text-slate-500 mb-3">Deep analysis dashboards for established projects.</p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {ADVANCED.map(r => (
-                <Link key={r.title} href={r.href} className="rounded-xl border border-slate-200 bg-white p-5 hover:border-indigo-300 hover:shadow-md transition-all">
+                <Link key={r.title} href={r.href} className="rounded-2xl border border-slate-200 bg-white p-6 hover:border-indigo-300 hover:shadow-md transition-all">
                   <r.icon className="h-6 w-6 text-indigo-500 mb-3" />
                   <h3 className="text-base font-semibold text-slate-800">{r.title}</h3>
                   <p className="mt-1 text-sm text-slate-500">{r.description}</p>

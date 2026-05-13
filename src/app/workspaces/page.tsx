@@ -112,8 +112,8 @@ export default function WorkspacesPage() {
       <div className="mx-auto max-w-4xl space-y-5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Workspaces</h1>
-            <p className="text-sm text-slate-500 mt-0.5">Organized project verticals.</p>
+            <h1 className="text-2xl font-bold text-slate-900">Workspaces</h1>
+            <p className="text-sm text-slate-500 mt-1">{workspaces.length} verticals | {tasks.filter(t => t.status !== "Complete").length} active tasks</p>
           </div>
           {isAdmin && (
             <div className="flex gap-2">
@@ -132,32 +132,44 @@ export default function WorkspacesPage() {
         {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
         {feedback && <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{feedback}</div>}
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-2">
           {workspaces.map(ws => {
-            const count = tasks.filter(t => t.workspace === ws.slug).length;
-            const overdue = tasks.filter(t => t.workspace === ws.slug && t.target_date && t.target_date < now && t.status !== "Complete").length;
-            const myCount = currentUserId ? tasks.filter(t => t.workspace === ws.slug && t.assignees.some(a => a.id === currentUserId)).length : 0;
+            const wt = tasks.filter(t => t.workspace === ws.slug && t.status !== "Complete");
+            const count = wt.length;
+            const high = wt.filter(t => t.priority === "Critical" || t.priority === "High").length;
+            const overdue = wt.filter(t => t.target_date && t.target_date < now).length;
+            const dueSoon = wt.filter(t => t.target_date && t.target_date >= now).sort((a, b) => (a.target_date ?? "").localeCompare(b.target_date ?? ""));
+            const top3 = wt.sort((a, b) => { const po = { Critical: 0, High: 1, Medium: 2, Low: 3 }; return (po[a.priority] ?? 2) - (po[b.priority] ?? 2); }).slice(0, 3);
             return (
-              <div key={ws.slug} className="rounded-xl border border-slate-200 bg-white p-6 hover:border-indigo-300 hover:shadow-md transition-all">
+              <div key={ws.slug} className="rounded-2xl border border-slate-200 bg-white p-6 hover:border-indigo-300 hover:shadow-lg transition-all cursor-pointer" onClick={() => setSelectedWs(ws.slug)}>
                 <div className="flex justify-between items-start">
-                  <button onClick={() => setSelectedWs(ws.slug)} className="text-left flex-1">
-                    <h3 className="text-base font-bold text-slate-900">{ws.title}</h3>
-                    <p className="mt-1.5 text-sm text-slate-500 line-clamp-2">{ws.description}</p>
-                  </button>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-slate-900">{ws.title}</h3>
+                    <p className="mt-1 text-sm text-slate-500 line-clamp-2">{ws.description}</p>
+                  </div>
                   {showManage && isAdmin && (
-                    <div className="flex gap-1 ml-2 shrink-0">
+                    <div className="flex gap-1 ml-2 shrink-0" onClick={e => e.stopPropagation()}>
                       <button onClick={() => setEditingWs(ws)} className="text-xs text-indigo-600 hover:underline">Edit</button>
                       {!ws.is_system && <button onClick={() => handleDeleteWs(ws)} className="text-xs text-red-500 hover:underline">Delete</button>}
                     </div>
                   )}
                 </div>
-                <button onClick={() => setSelectedWs(ws.slug)} className="w-full text-left">
-                  <div className="mt-4 flex gap-4 text-sm font-medium">
-                    <span className="text-slate-700">{count} task{count !== 1 ? "s" : ""}</span>
-                    {myCount > 0 && <span className="text-indigo-600">{myCount} mine</span>}
-                    {overdue > 0 && <span className="text-red-600">{overdue} overdue</span>}
+                <div className="mt-4 flex gap-4 text-sm">
+                  <span className="font-bold text-slate-800">{count} active</span>
+                  {high > 0 && <span className="text-amber-600 font-medium">{high} high</span>}
+                  {overdue > 0 && <span className="text-red-600 font-medium">{overdue} overdue</span>}
+                  {dueSoon.length > 0 && <span className="text-blue-600 font-medium">{dueSoon.length} scheduled</span>}
+                </div>
+                {top3.length > 0 && (
+                  <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3">
+                    {top3.map(t => (
+                      <div key={t.id} className="flex items-center justify-between text-sm">
+                        <span className="text-slate-700 truncate flex-1 mr-2">{t.title}</span>
+                        <span className={clsx("text-xs font-medium shrink-0", t.priority === "Critical" ? "text-red-600" : t.priority === "High" ? "text-amber-600" : "text-slate-400")}>{t.priority}</span>
+                      </div>
+                    ))}
                   </div>
-                </button>
+                )}
               </div>
             );
           })}
@@ -186,8 +198,8 @@ export default function WorkspacesPage() {
           <button onClick={() => { setSelectedWs(null); setFilter("all"); }} className="flex items-center gap-1 text-xs text-indigo-600 hover:underline mb-1">
             <ArrowLeft className="h-3 w-3" /> All Workspaces
           </button>
-          <h1 className="text-xl font-bold text-slate-900">{ws?.title ?? selectedWs}</h1>
-          {ws?.description && <p className="text-xs text-slate-500">{ws.description}</p>}
+          <h1 className="text-2xl font-bold text-slate-900">{ws?.title ?? selectedWs}</h1>
+          {ws?.description && <p className="text-sm text-slate-500 mt-1">{ws.description}</p>}
         </div>
         <div className="flex gap-2">
           <button onClick={() => setEditingTask("new")} className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">
